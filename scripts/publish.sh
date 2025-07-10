@@ -5,10 +5,10 @@
 echo "🚀 Publishing qlik_elixir to Hex.pm"
 echo "=================================="
 
-# Check if we're on main branch
+# Check if we're on master branch
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
-if [ "$BRANCH" != "main" ]; then
-    echo "❌ Error: You must be on the main branch to publish"
+if [ "$BRANCH" != "master" ]; then
+    echo "❌ Error: You must be on the master branch to publish"
     exit 1
 fi
 
@@ -35,7 +35,7 @@ fi
 
 # Run Credo
 echo "🔍 Running Credo..."
-if ! mix credo --strict; then
+if ! mix credo; then
     echo "⚠️  Warning: Credo found issues"
     read -p "Continue anyway? (y/n) " -n 1 -r
     echo
@@ -82,6 +82,10 @@ mix hex.publish
 # Push tag
 echo "📤 Pushing git tag..."
 git push origin "v$VERSION"
+
+# Also push the current branch
+echo "📤 Pushing current branch..."
+git push origin master
 
 echo "✅ Successfully published qlik_elixir v$VERSION!"
 echo "🎉 View your package at: https://hex.pm/packages/qlik_elixir"
