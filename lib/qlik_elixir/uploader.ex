@@ -5,7 +5,8 @@ defmodule QlikElixir.Uploader do
 
   alias QlikElixir.{Client, Config, Error}
 
-  @max_file_size 500 * 1024 * 1024  # 500MB in bytes
+  # 500MB in bytes
+  @max_file_size 500 * 1024 * 1024
   @upload_endpoint "api/v1/data-files"
 
   @doc """
@@ -35,20 +36,20 @@ defmodule QlikElixir.Uploader do
 
   defp perform_upload(content, filename, config, opts) do
     connection_id = opts[:connection_id] || config.connection_id
-    
+
     multipart = build_multipart(content, filename, connection_id)
-    
+
     case Client.post(@upload_endpoint, {:multipart, multipart}, config) do
       {:ok, response} ->
         {:ok, response}
-        
+
       {:error, %Error{type: :file_exists_error}} = error ->
         if Keyword.get(opts, :overwrite, false) do
           handle_overwrite(content, filename, config, opts)
         else
           error
         end
-        
+
       error ->
         error
     end
@@ -60,6 +61,10 @@ defmodule QlikElixir.Uploader do
       # Retry upload after deletion
       opts = Keyword.put(opts, :overwrite, false)
       perform_upload(content, filename, config, opts)
+    else
+      error ->
+        # Return the error from find_file_by_name or delete_file
+        error
     end
   end
 
@@ -70,7 +75,7 @@ defmodule QlikElixir.Uploader do
           nil -> {:error, Error.file_not_found("File not found: #{filename}")}
           file -> {:ok, file}
         end
-        
+
       error ->
         error
     end
@@ -85,13 +90,11 @@ defmodule QlikElixir.Uploader do
 
   defp build_multipart(content, filename, connection_id) do
     parts = [
-      {:file, content,
-       filename: filename,
-       content_type: "text/csv"}
+      {"file", {content, filename: filename, content_type: "text/csv"}}
     ]
-    
+
     if connection_id do
-      [{:field, "connectionId", connection_id} | parts]
+      [{"connectionId", connection_id} | parts]
     else
       parts
     end
@@ -105,17 +108,20 @@ defmodule QlikElixir.Uploader do
         else
           {:error, Error.validation_error("#{file_path} is not a regular file")}
         end
-        
+
       {:error, :enoent} ->
         {:error, Error.file_not_found("File not found: #{file_path}")}
-        
+
       {:error, reason} ->
         {:error, Error.validation_error("Cannot access file: #{inspect(reason)}")}
     end
   end
 
   defp validate_file_size(size) when size > @max_file_size do
-    {:error, Error.file_too_large("File size (#{format_bytes(size)}) exceeds maximum allowed size (#{format_bytes(@max_file_size)})")}
+    {:error,
+     Error.file_too_large(
+       "File size (#{format_bytes(size)}) exceeds maximum allowed size (#{format_bytes(@max_file_size)})"
+     )}
   end
 
   defp validate_file_size(_), do: :ok

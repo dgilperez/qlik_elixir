@@ -6,11 +6,12 @@ defmodule QlikElixir.ConfigTest do
 
   describe "new/1" do
     test "creates config from options" do
-      config = Config.new(
-        api_key: "test-key",
-        tenant_url: "https://test.qlikcloud.com",
-        connection_id: "conn-123"
-      )
+      config =
+        Config.new(
+          api_key: "test-key",
+          tenant_url: "https://test.qlikcloud.com",
+          connection_id: "conn-123"
+        )
 
       assert config.api_key == "test-key"
       assert config.tenant_url == "https://test.qlikcloud.com"
@@ -18,11 +19,12 @@ defmodule QlikElixir.ConfigTest do
     end
 
     test "creates config with custom http options" do
-      config = Config.new(
-        api_key: "test-key",
-        tenant_url: "https://test.qlikcloud.com",
-        http_options: [timeout: 1000]
-      )
+      config =
+        Config.new(
+          api_key: "test-key",
+          tenant_url: "https://test.qlikcloud.com",
+          http_options: [timeout: 1000]
+        )
 
       assert config.http_options[:timeout] == 1000
     end
@@ -47,10 +49,11 @@ defmodule QlikElixir.ConfigTest do
 
   describe "validate/1" do
     test "validates valid config" do
-      config = Config.new(
-        api_key: "test-key",
-        tenant_url: "https://test.qlikcloud.com"
-      )
+      config =
+        Config.new(
+          api_key: "test-key",
+          tenant_url: "https://test.qlikcloud.com"
+        )
 
       assert {:ok, ^config} = Config.validate(config)
     end
@@ -106,16 +109,18 @@ defmodule QlikElixir.ConfigTest do
 
   describe "merge/2" do
     test "merges options with existing config" do
-      config = Config.new(
-        api_key: "original-key",
-        tenant_url: "https://original.qlikcloud.com",
-        connection_id: "original-conn"
-      )
+      config =
+        Config.new(
+          api_key: "original-key",
+          tenant_url: "https://original.qlikcloud.com",
+          connection_id: "original-conn"
+        )
 
-      merged = Config.merge(config, 
-        api_key: "new-key",
-        connection_id: "new-conn"
-      )
+      merged =
+        Config.merge(config,
+          api_key: "new-key",
+          connection_id: "new-conn"
+        )
 
       assert merged.api_key == "new-key"
       assert merged.tenant_url == "https://original.qlikcloud.com"

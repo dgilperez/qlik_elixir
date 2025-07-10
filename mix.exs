@@ -2,13 +2,13 @@ defmodule QlikElixir.MixProject do
   use Mix.Project
 
   @version "0.1.0"
-  @github_url "https://github.com/yourusername/qlik_elixir" # TODO: Update with your GitHub URL
+  @github_url "https://github.com/dgilperez/qlik_elixir"
 
   def project do
     [
       app: :qlik_elixir,
       version: @version,
-      elixir: "~> 1.14",
+      elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       docs: docs(),
@@ -16,13 +16,6 @@ defmodule QlikElixir.MixProject do
       description: description(),
       source_url: @github_url,
       homepage_url: @github_url,
-      test_coverage: [tool: ExCoveralls],
-      preferred_cli_env: [
-        coveralls: :test,
-        "coveralls.detail": :test,
-        "coveralls.post": :test,
-        "coveralls.html": :test
-      ],
       dialyzer: [
         plt_file: {:no_warn, "priv/plts/dialyzer.plt"},
         plt_add_apps: [:ex_unit]
@@ -38,13 +31,12 @@ defmodule QlikElixir.MixProject do
 
   defp deps do
     [
-      {:req, "~> 0.4"},
+      {:req, "~> 0.5.0"},
       {:jason, "~> 1.4"},
       {:bypass, "~> 2.1", only: :test},
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.4", only: [:dev], runtime: false},
-      {:excoveralls, "~> 0.18", only: :test}
+      {:dialyxir, "~> 1.4", only: [:dev], runtime: false}
     ]
   end
 
@@ -58,7 +50,7 @@ defmodule QlikElixir.MixProject do
       links: %{
         "GitHub" => @github_url
       },
-      maintainers: ["Your Name"], # TODO: Update with your name
+      maintainers: ["dgilperez"],
       files: ~w(lib .formatter.exs mix.exs README.md LICENSE CHANGELOG.md)
     ]
   end

@@ -123,7 +123,7 @@ defmodule QlikElixir do
       }}
 
       iex> QlikElixir.list_files(limit: 10, offset: 20)
-      {:ok, %{"data" => [...], "total" => 50}}
+      {:ok, %{"data" => [%{"id" => "file-789", "name" => "logs.csv", "size" => 512}], "total" => 50}}
 
   """
   @spec list_files(keyword()) :: {:ok, map()} | {:error, Error.t()}
@@ -131,7 +131,7 @@ defmodule QlikElixir do
     config = get_config(opts)
     limit = Keyword.get(opts, :limit, 100)
     offset = Keyword.get(opts, :offset, 0)
-    
+
     Client.get("api/v1/data-files?limit=#{limit}&offset=#{offset}", config)
   end
 
@@ -150,7 +150,7 @@ defmodule QlikElixir do
   @spec delete_file(String.t(), keyword()) :: :ok | {:error, Error.t()}
   def delete_file(file_id, opts \\ []) do
     config = get_config(opts)
-    
+
     case Client.delete("api/v1/data-files/#{file_id}", config) do
       {:ok, _} -> :ok
       error -> error
@@ -192,14 +192,14 @@ defmodule QlikElixir do
   @spec find_file_by_name(String.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
   def find_file_by_name(filename, opts \\ []) do
     config = get_config(opts)
-    
+
     case Client.get("api/v1/data-files?limit=100", config) do
       {:ok, %{"data" => files}} ->
         case Enum.find(files, fn file -> file["name"] == filename end) do
           nil -> {:error, Error.file_not_found("File not found: #{filename}")}
           file -> {:ok, file}
         end
-        
+
       error ->
         error
     end

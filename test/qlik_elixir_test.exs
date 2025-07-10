@@ -1,10 +1,10 @@
 defmodule QlikElixirTest do
   use ExUnit.Case
-  doctest QlikElixir
+  # doctest QlikElixir - disabled as these require external API setup
 
   setup do
     bypass = Bypass.open()
-    
+
     # Set environment variables for testing
     System.put_env("QLIK_API_KEY", "test-key")
     System.put_env("QLIK_TENANT_URL", "http://localhost:#{bypass.port}")
@@ -13,8 +13,8 @@ defmodule QlikElixirTest do
     # Create a test CSV file
     test_file = Path.join(System.tmp_dir!(), "test_#{:erlang.unique_integer()}.csv")
     File.write!(test_file, "id,name\n1,John\n2,Jane\n")
-    
-    on_exit(fn -> 
+
+    on_exit(fn ->
       File.rm(test_file)
       System.delete_env("QLIK_API_KEY")
       System.delete_env("QLIK_TENANT_URL")
@@ -29,11 +29,14 @@ defmodule QlikElixirTest do
       Bypass.expect_once(bypass, "POST", "/api/v1/data-files", fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(201, Jason.encode!(%{
-          id: "file-123",
-          name: Path.basename(test_file),
-          size: 24
-        }))
+        |> Plug.Conn.resp(
+          201,
+          Jason.encode!(%{
+            id: "file-123",
+            name: Path.basename(test_file),
+            size: 24
+          })
+        )
       end)
 
       assert {:ok, %{"id" => "file-123"}} = QlikElixir.upload_csv(test_file)
@@ -43,25 +46,29 @@ defmodule QlikElixirTest do
       Bypass.expect_once(bypass, "POST", "/api/v1/data-files", fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(201, Jason.encode!(%{
-          id: "file-123",
-          name: "custom.csv"
-        }))
+        |> Plug.Conn.resp(
+          201,
+          Jason.encode!(%{
+            id: "file-123",
+            name: "custom.csv"
+          })
+        )
       end)
 
-      assert {:ok, %{"name" => "custom.csv"}} = 
-        QlikElixir.upload_csv(test_file, name: "custom.csv")
+      assert {:ok, %{"name" => "custom.csv"}} =
+               QlikElixir.upload_csv(test_file, name: "custom.csv")
     end
 
     test "uses custom config", %{bypass: bypass, test_file: test_file} do
-      custom_config = QlikElixir.new_config(
-        api_key: "custom-key",
-        tenant_url: "http://localhost:#{bypass.port}"
-      )
+      custom_config =
+        QlikElixir.new_config(
+          api_key: "custom-key",
+          tenant_url: "http://localhost:#{bypass.port}"
+        )
 
       Bypass.expect_once(bypass, "POST", "/api/v1/data-files", fn conn ->
         assert ["Bearer custom-key"] = Plug.Conn.get_req_header(conn, "authorization")
-        
+
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
         |> Plug.Conn.resp(201, Jason.encode!(%{id: "file-123"}))
@@ -76,49 +83,66 @@ defmodule QlikElixirTest do
       Bypass.expect_once(bypass, "POST", "/api/v1/data-files", fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(201, Jason.encode!(%{
-          id: "file-123",
-          name: "dynamic.csv",
-          size: 20
-        }))
+        |> Plug.Conn.resp(
+          201,
+          Jason.encode!(%{
+            id: "file-123",
+            name: "dynamic.csv",
+            size: 20
+          })
+        )
       end)
 
       content = "col1,col2\nval1,val2"
-      assert {:ok, %{"id" => "file-123"}} = 
-        QlikElixir.upload_csv_content(content, "dynamic.csv")
+
+      assert {:ok, %{"id" => "file-123"}} =
+               QlikElixir.upload_csv_content(content, "dynamic.csv")
     end
 
     test "handles overwrite option", %{bypass: bypass} do
-      # First call returns conflict
-      Bypass.expect_once(bypass, "POST", "/api/v1/data-files", fn conn ->
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(409, Jason.encode!(%{message: "File exists"}))
+      # Track request order
+      {:ok, agent} = Agent.start_link(fn -> %{post_count: 0} end)
+
+      # Handle all requests through a single bypass handler
+      Bypass.expect(bypass, fn conn ->
+        case {conn.method, conn.request_path} do
+          {"POST", "/api/v1/data-files"} ->
+            state =
+              Agent.get_and_update(agent, fn state ->
+                new_state = %{state | post_count: state.post_count + 1}
+                {new_state, new_state}
+              end)
+
+            if state.post_count == 1 do
+              # First POST returns 409
+              conn
+              |> Plug.Conn.put_resp_content_type("application/json")
+              |> Plug.Conn.resp(409, Jason.encode!(%{message: "File exists"}))
+            else
+              # Second POST returns success
+              conn
+              |> Plug.Conn.put_resp_content_type("application/json")
+              |> Plug.Conn.resp(201, Jason.encode!(%{id: "new-123"}))
+            end
+
+          {"GET", "/api/v1/data-files"} ->
+            conn
+            |> Plug.Conn.put_resp_content_type("application/json")
+            |> Plug.Conn.resp(
+              200,
+              Jason.encode!(%{
+                data: [%{id: "existing-123", name: "dynamic.csv"}]
+              })
+            )
+
+          {"DELETE", "/api/v1/data-files/existing-123"} ->
+            Plug.Conn.resp(conn, 204, "")
+        end
       end)
 
-      # Find existing file
-      Bypass.expect_once(bypass, "GET", "/api/v1/data-files", fn conn ->
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(200, Jason.encode!(%{
-          data: [%{id: "existing-123", name: "dynamic.csv"}]
-        }))
-      end)
-
-      # Delete existing
-      Bypass.expect_once(bypass, "DELETE", "/api/v1/data-files/existing-123", fn conn ->
-        Plug.Conn.resp(conn, 204, "")
-      end)
-
-      # Retry upload
-      Bypass.expect_once(bypass, "POST", "/api/v1/data-files", fn conn ->
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(201, Jason.encode!(%{id: "new-123"}))
-      end)
-
-      assert {:ok, %{"id" => "new-123"}} = 
-        QlikElixir.upload_csv_content("content", "dynamic.csv", overwrite: true)
+      result = QlikElixir.upload_csv_content("content", "dynamic.csv", overwrite: true)
+      Agent.stop(agent)
+      assert {:ok, %{"id" => "new-123"}} = result
     end
   end
 
@@ -126,16 +150,19 @@ defmodule QlikElixirTest do
     test "lists files successfully", %{bypass: bypass} do
       Bypass.expect_once(bypass, "GET", "/api/v1/data-files", fn conn ->
         assert conn.query_string == "limit=100&offset=0"
-        
+
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(200, Jason.encode!(%{
-          data: [
-            %{id: "file-1", name: "data1.csv", size: 100},
-            %{id: "file-2", name: "data2.csv", size: 200}
-          ],
-          total: 2
-        }))
+        |> Plug.Conn.resp(
+          200,
+          Jason.encode!(%{
+            data: [
+              %{id: "file-1", name: "data1.csv", size: 100},
+              %{id: "file-2", name: "data2.csv", size: 200}
+            ],
+            total: 2
+          })
+        )
       end)
 
       assert {:ok, %{"data" => files, "total" => 2}} = QlikElixir.list_files()
@@ -145,7 +172,7 @@ defmodule QlikElixirTest do
     test "lists files with pagination", %{bypass: bypass} do
       Bypass.expect_once(bypass, "GET", "/api/v1/data-files", fn conn ->
         assert conn.query_string == "limit=10&offset=20"
-        
+
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
         |> Plug.Conn.resp(200, Jason.encode!(%{data: [], total: 50}))
@@ -171,8 +198,8 @@ defmodule QlikElixirTest do
         |> Plug.Conn.resp(404, Jason.encode!(%{message: "Not found"}))
       end)
 
-      assert {:error, %QlikElixir.Error{type: :file_not_found}} = 
-        QlikElixir.delete_file("non-existent")
+      assert {:error, %QlikElixir.Error{type: :file_not_found}} =
+               QlikElixir.delete_file("non-existent")
     end
   end
 
@@ -181,12 +208,15 @@ defmodule QlikElixirTest do
       Bypass.expect_once(bypass, "GET", "/api/v1/data-files", fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(200, Jason.encode!(%{
-          data: [
-            %{id: "file-1", name: "exists.csv", size: 100},
-            %{id: "file-2", name: "other.csv", size: 200}
-          ]
-        }))
+        |> Plug.Conn.resp(
+          200,
+          Jason.encode!(%{
+            data: [
+              %{id: "file-1", name: "exists.csv", size: 100},
+              %{id: "file-2", name: "other.csv", size: 200}
+            ]
+          })
+        )
       end)
 
       assert QlikElixir.file_exists?("exists.csv") == true
@@ -196,18 +226,22 @@ defmodule QlikElixirTest do
       Bypass.expect_once(bypass, "GET", "/api/v1/data-files", fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(200, Jason.encode!(%{
-          data: [
-            %{id: "file-1", name: "other.csv", size: 100}
-          ]
-        }))
+        |> Plug.Conn.resp(
+          200,
+          Jason.encode!(%{
+            data: [
+              %{id: "file-1", name: "other.csv", size: 100}
+            ]
+          })
+        )
       end)
 
       assert QlikElixir.file_exists?("not-exists.csv") == false
     end
 
     test "returns false on API error", %{bypass: bypass} do
-      Bypass.expect_once(bypass, "GET", "/api/v1/data-files", fn conn ->
+      # Expect 4 requests total (1 + 3 retries) due to retry logic on 500 errors
+      Bypass.expect(bypass, "GET", "/api/v1/data-files", fn conn ->
         Plug.Conn.resp(conn, 500, "Server error")
       end)
 
@@ -220,16 +254,19 @@ defmodule QlikElixirTest do
       Bypass.expect_once(bypass, "GET", "/api/v1/data-files", fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(200, Jason.encode!(%{
-          data: [
-            %{id: "file-1", name: "target.csv", size: 100},
-            %{id: "file-2", name: "other.csv", size: 200}
-          ]
-        }))
+        |> Plug.Conn.resp(
+          200,
+          Jason.encode!(%{
+            data: [
+              %{id: "file-1", name: "target.csv", size: 100},
+              %{id: "file-2", name: "other.csv", size: 200}
+            ]
+          })
+        )
       end)
 
-      assert {:ok, %{"id" => "file-1", "name" => "target.csv"}} = 
-        QlikElixir.find_file_by_name("target.csv")
+      assert {:ok, %{"id" => "file-1", "name" => "target.csv"}} =
+               QlikElixir.find_file_by_name("target.csv")
     end
 
     test "returns error when file not found", %{bypass: bypass} do
@@ -239,8 +276,8 @@ defmodule QlikElixirTest do
         |> Plug.Conn.resp(200, Jason.encode!(%{data: []}))
       end)
 
-      assert {:error, %QlikElixir.Error{type: :file_not_found}} = 
-        QlikElixir.find_file_by_name("missing.csv")
+      assert {:error, %QlikElixir.Error{type: :file_not_found}} =
+               QlikElixir.find_file_by_name("missing.csv")
     end
   end
 end

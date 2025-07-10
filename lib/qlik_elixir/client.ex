@@ -12,7 +12,7 @@ defmodule QlikElixir.Client do
   def get(path, config, opts \\ []) do
     url = build_url(config, path)
     headers = Config.headers(config)
-    
+
     request(:get, url, headers, nil, config, opts)
   end
 
@@ -22,13 +22,13 @@ defmodule QlikElixir.Client do
   @spec post(String.t(), map() | {:multipart, list()}, Config.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
   def post(path, body, config, opts \\ []) do
     url = build_url(config, path)
-    
+
     case body do
       {:multipart, _parts} ->
         # For multipart, don't set Content-Type header (Req will set it with boundary)
         headers = [{"Authorization", "Bearer #{config.api_key}"}]
         request(:post, url, headers, body, config, opts)
-        
+
       _ ->
         headers = Config.headers(config)
         request(:post, url, headers, body, config, opts)
@@ -42,30 +42,30 @@ defmodule QlikElixir.Client do
   def delete(path, config, opts \\ []) do
     url = build_url(config, path)
     headers = Config.headers(config)
-    
+
     request(:delete, url, headers, nil, config, opts)
   end
 
   defp request(method, url, headers, body, config, opts) do
     req_opts = build_req_options(method, url, headers, body, config, opts)
-    
+
     case Req.request(req_opts) do
       {:ok, %{status: status, body: response_body}} when status in 200..299 ->
         {:ok, response_body}
-        
+
       {:ok, %{status: 409, body: body}} ->
         {:error, Error.file_exists_error("File already exists", details: body)}
-        
+
       {:ok, %{status: 401}} ->
         {:error, Error.authentication_error("Invalid API key or unauthorized access")}
-        
+
       {:ok, %{status: 404, body: body}} ->
         {:error, Error.file_not_found("Resource not found", details: body)}
-        
+
       {:ok, %{status: status, body: body}} ->
         message = extract_error_message(body, "Request failed with status #{status}")
         {:error, Error.upload_error(message, response: %{status: status, body: body})}
-        
+
       {:error, exception} ->
         {:error, Error.network_error("Network request failed: #{inspect(exception)}")}
     end
@@ -77,7 +77,7 @@ defmodule QlikElixir.Client do
       url: url,
       headers: headers
     ]
-    
+
     base_opts
     |> add_body(body)
     |> Keyword.merge(config.http_options)
@@ -85,7 +85,7 @@ defmodule QlikElixir.Client do
   end
 
   defp add_body(opts, nil), do: opts
-  defp add_body(opts, {:multipart, parts}), do: Keyword.put(opts, :body, {:multipart, parts})
+  defp add_body(opts, {:multipart, parts}), do: Keyword.put(opts, :form_multipart, parts)
   defp add_body(opts, body) when is_map(body), do: Keyword.put(opts, :json, body)
   defp add_body(opts, body), do: Keyword.put(opts, :body, body)
 

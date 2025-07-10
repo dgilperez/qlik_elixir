@@ -6,11 +6,12 @@ defmodule QlikElixir.ErrorTest do
 
   describe "new/3" do
     test "creates an error with all fields" do
-      error = Error.new(:upload_error, "Upload failed", 
-        details: %{reason: "timeout"},
-        request: %{url: "http://example.com"},
-        response: %{status: 500}
-      )
+      error =
+        Error.new(:upload_error, "Upload failed",
+          details: %{reason: "timeout"},
+          request: %{url: "http://example.com"},
+          response: %{status: 500}
+        )
 
       assert error.type == :upload_error
       assert error.message == "Upload failed"

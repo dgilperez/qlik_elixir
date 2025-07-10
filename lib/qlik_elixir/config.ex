@@ -17,20 +17,16 @@ defmodule QlikElixir.Config do
           http_options: keyword()
         }
 
-  @default_http_options [
-    timeout: :timer.minutes(5),
-    retry: :transient,
-    max_retries: 3,
-    retry_delay: fn attempt -> attempt * 1000 end
-  ]
-
   @doc """
   Creates a new configuration struct.
 
   ## Examples
 
-      iex> QlikElixir.Config.new(api_key: "key", tenant_url: "https://tenant.qlikcloud.com")
-      %QlikElixir.Config{api_key: "key", tenant_url: "https://tenant.qlikcloud.com"}
+      iex> config = QlikElixir.Config.new(api_key: "key", tenant_url: "https://tenant.qlikcloud.com")
+      iex> config.api_key
+      "key"
+      iex> config.tenant_url
+      "https://tenant.qlikcloud.com"
 
   """
   @spec new(keyword()) :: t()
@@ -39,8 +35,17 @@ defmodule QlikElixir.Config do
       api_key: get_config_value(:api_key, opts),
       tenant_url: get_config_value(:tenant_url, opts),
       connection_id: get_config_value(:connection_id, opts),
-      http_options: Keyword.get(opts, :http_options, @default_http_options)
+      http_options: Keyword.get(opts, :http_options, default_http_options())
     }
+  end
+
+  defp default_http_options do
+    [
+      receive_timeout: :timer.minutes(5),
+      retry: :transient,
+      max_retries: 3,
+      retry_delay: fn attempt -> attempt * 1000 end
+    ]
   end
 
   @doc """
@@ -69,11 +74,12 @@ defmodule QlikElixir.Config do
   """
   @spec merge(t(), keyword()) :: t()
   def merge(%__MODULE__{} = config, opts) do
-    %{config |
-      api_key: opts[:api_key] || config.api_key,
-      tenant_url: opts[:tenant_url] || config.tenant_url,
-      connection_id: opts[:connection_id] || config.connection_id,
-      http_options: Keyword.merge(config.http_options, opts[:http_options] || [])
+    %{
+      config
+      | api_key: opts[:api_key] || config.api_key,
+        tenant_url: opts[:tenant_url] || config.tenant_url,
+        connection_id: opts[:connection_id] || config.connection_id,
+        http_options: Keyword.merge(config.http_options, opts[:http_options] || [])
     }
   end
 
