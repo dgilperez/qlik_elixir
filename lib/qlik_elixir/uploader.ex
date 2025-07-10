@@ -90,7 +90,7 @@ defmodule QlikElixir.Uploader do
 
   defp build_multipart(content, filename, connection_id) do
     parts = [
-      {"file", {content, filename: filename, content_type: "text/csv"}}
+      {"file", {content, [filename: filename, content_type: "text/csv"]}}
     ]
 
     if connection_id do

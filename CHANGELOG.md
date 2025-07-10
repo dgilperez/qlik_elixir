@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-01-10
+
+### Fixed
+- Fixed multipart form upload format to be compatible with Req library
+  - File options are now properly wrapped in a list: `{content, [filename: filename, content_type: "text/csv"]}`
+  - This ensures proper multipart form encoding when uploading CSV files to Qlik Cloud
+
 ## [0.1.0] - 2024-01-01
 
 ### Added
@@ -27,5 +34,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Full test coverage with Bypass for HTTP mocking
 - Comprehensive documentation and examples
 
-[Unreleased]: https://github.com/yourusername/qlik_elixir/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/yourusername/qlik_elixir/releases/tag/v0.1.0
+[Unreleased]: https://github.com/dgilperez/qlik_elixir/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/dgilperez/qlik_elixir/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/dgilperez/qlik_elixir/releases/tag/v0.1.0
