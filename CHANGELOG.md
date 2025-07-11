@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-01-11
+
+### Fixed
+- Fixed multipart form structure to match Qlik Cloud API requirements
+  - Multipart form now uses 'File' and 'Json' fields (capitalized) as required by Qlik API
+  - The 'Json' field contains metadata including the 'name' parameter as a JSON object
+  - This fixes upload failures with "Request must contain 'name' parameter" error
+- Updated tests to properly verify the multipart form structure
+
 ## [0.2.0] - 2025-01-10
 
 ### Fixed
@@ -34,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Full test coverage with Bypass for HTTP mocking
 - Comprehensive documentation and examples
 
-[Unreleased]: https://github.com/dgilperez/qlik_elixir/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/dgilperez/qlik_elixir/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/dgilperez/qlik_elixir/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/dgilperez/qlik_elixir/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/dgilperez/qlik_elixir/releases/tag/v0.1.0

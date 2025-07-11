@@ -89,15 +89,16 @@ defmodule QlikElixir.Uploader do
   end
 
   defp build_multipart(content, filename, connection_id) do
-    parts = [
-      {"file", {content, [filename: filename, content_type: "text/csv"]}}
+    # Build the JSON metadata
+    json_data = %{"name" => filename}
+    json_data = if connection_id, do: Map.put(json_data, "connectionId", connection_id), else: json_data
+    
+    # Qlik API expects 'File' and 'Json' fields (capitalized)
+    # Req expects {name, {value, options}} format for fields with options
+    [
+      {"Json", {Jason.encode!(json_data), [content_type: "application/json"]}},
+      {"File", {content, [filename: filename, content_type: "text/csv"]}}
     ]
-
-    if connection_id do
-      [{"connectionId", connection_id} | parts]
-    else
-      parts
-    end
   end
 
   defp validate_file(file_path) do

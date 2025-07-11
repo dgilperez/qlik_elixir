@@ -200,6 +200,31 @@ defmodule QlikElixir.UploaderTest do
                Uploader.upload_content(content, "data.csv", config)
     end
 
+    test "multipart form follows Qlik API structure", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "POST", "/api/v1/data-files", fn conn ->
+        assert ["multipart/form-data" <> _] = Plug.Conn.get_req_header(conn, "content-type")
+        
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        
+        # Verify Qlik API structure: 'Json' and 'File' fields (capitalized)
+        assert body =~ ~s(name="Json")
+        assert body =~ ~s(name="File")
+        
+        # Json field should contain the name
+        assert body =~ ~s("name":"data.csv")
+        assert body =~ ~s(content-type: application/json)
+        
+        # File field should have the file content
+        assert body =~ ~s(filename="data.csv")
+        
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(201, Jason.encode!(%{id: "file-123"}))
+      end)
+
+      assert {:ok, _} = Uploader.upload_content("content", "data.csv", config)
+    end
+
     test "validates filename extension", %{config: config} do
       assert {:error, %Error{type: :validation_error}} =
                Uploader.upload_content("content", "data.txt", config)
@@ -217,8 +242,11 @@ defmodule QlikElixir.UploaderTest do
 
     test "uses connection_id from options", %{bypass: bypass, config: config} do
       Bypass.expect_once(bypass, "POST", "/api/v1/data-files", fn conn ->
-        # Would need to parse multipart to verify connectionId field
-        # For now, just verify the request succeeds
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        
+        # Verify the Json field contains the custom connectionId
+        assert body =~ ~s("connectionId":"custom-conn")
+        
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
         |> Plug.Conn.resp(201, Jason.encode!(%{id: "file-123"}))

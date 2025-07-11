@@ -26,10 +26,15 @@ defmodule QlikElixir.MultipartFixTest do
       {:ok, body, conn} = Plug.Conn.read_body(conn)
 
       # Verify the multipart body has correct structure
-      # Should have string keys, not atoms
-      assert body =~ ~s(name="file")
-      assert body =~ ~s(name="connectionId")
-
+      # Qlik API expects 'File' and 'Json' fields (capitalized)
+      assert body =~ ~s(name="Json")
+      assert body =~ ~s(name="File")
+      
+      # Json field should contain metadata including name and connectionId
+      assert body =~ ~s(content-type: application/json)
+      assert body =~ ~s("name":"test.csv")
+      assert body =~ ~s("connectionId":"test-conn")
+      
       # File part should have filename and content-type
       assert body =~ ~s(filename="test.csv")
       assert body =~ "content-type: text/csv"
