@@ -92,7 +92,7 @@ defmodule QlikElixir.Uploader do
     # Build the JSON metadata
     json_data = %{"name" => filename}
     json_data = if connection_id, do: Map.put(json_data, "connectionId", connection_id), else: json_data
-    
+
     # Qlik API expects 'File' and 'Json' fields (capitalized)
     # Req expects {name, {value, options}} format for fields with options
     [
