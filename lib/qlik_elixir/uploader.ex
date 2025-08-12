@@ -56,7 +56,9 @@ defmodule QlikElixir.Uploader do
   end
 
   defp handle_overwrite(content, filename, config, opts) do
-    with {:ok, existing_file} <- find_file_by_name(filename, config),
+    connection_id = opts[:connection_id] || config.connection_id
+
+    with {:ok, existing_file} <- find_file_by_name(filename, config, connection_id),
          :ok <- delete_file(existing_file["id"], config) do
       # Retry upload after deletion
       opts = Keyword.put(opts, :overwrite, false)
@@ -68,8 +70,16 @@ defmodule QlikElixir.Uploader do
     end
   end
 
-  defp find_file_by_name(filename, config) do
-    case Client.get("#{@upload_endpoint}?limit=100", config) do
+  defp find_file_by_name(filename, config, connection_id) do
+    # Build query params with connection filter if provided
+    query_params =
+      if connection_id do
+        "?limit=100&connectionId=#{connection_id}"
+      else
+        "?limit=100"
+      end
+
+    case Client.get("#{@upload_endpoint}#{query_params}", config) do
       {:ok, %{"data" => files}} ->
         case Enum.find(files, fn file -> file["name"] == filename end) do
           nil -> {:error, Error.file_not_found("File not found: #{filename}")}

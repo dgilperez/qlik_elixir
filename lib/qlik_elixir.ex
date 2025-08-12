@@ -131,8 +131,12 @@ defmodule QlikElixir do
     config = get_config(opts)
     limit = Keyword.get(opts, :limit, 100)
     offset = Keyword.get(opts, :offset, 0)
+    include_all_spaces = Keyword.get(opts, :includeAllSpaces, false)
 
-    Client.get("api/v1/data-files?limit=#{limit}&offset=#{offset}", config)
+    query_params = "limit=#{limit}&offset=#{offset}"
+    query_params = if include_all_spaces, do: "#{query_params}&includeAllSpaces=true", else: query_params
+
+    Client.get("api/v1/data-files?#{query_params}", config)
   end
 
   @doc """
