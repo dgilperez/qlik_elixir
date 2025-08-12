@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2025-01-12
+
+### Fixed
+- Fixed overwrite functionality to properly respect connection_id filter
+  - The `handle_overwrite` function now passes connection_id to `find_file_by_name`
+  - File search is now filtered by connection_id when provided, preventing cross-space file conflicts
+- Added support for `includeAllSpaces` option in `list_files` function
+  - Allows listing files across all spaces when set to true
+
 ## [0.2.1] - 2025-01-11
 
 ### Fixed
@@ -43,7 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Full test coverage with Bypass for HTTP mocking
 - Comprehensive documentation and examples
 
-[Unreleased]: https://github.com/dgilperez/qlik_elixir/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/dgilperez/qlik_elixir/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/dgilperez/qlik_elixir/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/dgilperez/qlik_elixir/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/dgilperez/qlik_elixir/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/dgilperez/qlik_elixir/releases/tag/v0.1.0
