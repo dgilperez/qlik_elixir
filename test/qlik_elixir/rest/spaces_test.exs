@@ -120,11 +120,15 @@ defmodule QlikElixir.REST.SpacesTest do
   end
 
   describe "update/3" do
-    test "updates space via PATCH", %{bypass: bypass, config: config} do
+    test "updates space via PATCH with JSON Patch format", %{bypass: bypass, config: config} do
       Bypass.expect_once(bypass, "PATCH", "/api/v1/spaces/space-123", fn conn ->
         {:ok, body, conn} = Plug.Conn.read_body(conn)
-        params = Jason.decode!(body)
-        assert params["description"] == "Updated description"
+        patches = Jason.decode!(body)
+        # Verify JSON Patch format
+        assert is_list(patches)
+        patch = Enum.find(patches, &(&1["path"] == "/description"))
+        assert patch["op"] == "replace"
+        assert patch["value"] == "Updated description"
 
         conn
         |> Plug.Conn.put_resp_content_type("application/json")

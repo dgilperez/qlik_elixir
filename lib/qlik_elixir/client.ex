@@ -121,6 +121,7 @@ defmodule QlikElixir.Client do
   defp add_body(opts, nil), do: opts
   defp add_body(opts, {:multipart, parts}), do: Keyword.put(opts, :form_multipart, parts)
   defp add_body(opts, body) when is_map(body), do: Keyword.put(opts, :json, body)
+  defp add_body(opts, body) when is_list(body), do: Keyword.put(opts, :json, body)
   defp add_body(opts, body), do: Keyword.put(opts, :body, body)
 
   defp build_url(%Config{} = config, path) do

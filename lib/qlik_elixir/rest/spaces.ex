@@ -82,7 +82,7 @@ defmodule QlikElixir.REST.Spaces do
   end
 
   @doc """
-  Updates an existing space.
+  Updates an existing space using JSON Patch format.
 
   ## Examples
 
@@ -92,11 +92,15 @@ defmodule QlikElixir.REST.Spaces do
   """
   @spec update(String.t(), map(), keyword()) :: {:ok, map()} | {:error, Error.t()}
   def update(space_id, params, opts \\ []) do
+    # Qlik Spaces API uses JSON Patch format
     body =
-      Helpers.build_body(params, [
-        {"name", :name},
-        {"description", :description}
-      ])
+      params
+      |> Enum.map(fn
+        {:name, value} -> %{"op" => "replace", "path" => "/name", "value" => value}
+        {:description, value} -> %{"op" => "replace", "path" => "/description", "value" => value}
+        {key, value} when is_atom(key) -> %{"op" => "replace", "path" => "/#{key}", "value" => value}
+        {key, value} -> %{"op" => "replace", "path" => "/#{key}", "value" => value}
+      end)
 
     Client.patch("#{@base_path}/#{space_id}", body, Helpers.get_config(opts))
   end
