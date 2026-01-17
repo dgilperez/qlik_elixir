@@ -1,306 +1,296 @@
 # QlikElixir
 
-An Elixir client library for uploading CSV files to Qlik Cloud with comprehensive API support.
+[![Hex.pm](https://img.shields.io/hexpm/v/qlik_elixir.svg)](https://hex.pm/packages/qlik_elixir)
+[![Docs](https://img.shields.io/badge/hex-docs-blue.svg)](https://hexdocs.pm/qlik_elixir)
+[![License](https://img.shields.io/hexpm/l/qlik_elixir.svg)](https://github.com/dgilperez/qlik_elixir/blob/master/LICENSE)
+
+A comprehensive Elixir client for [Qlik Cloud](https://www.qlik.com/us/products/qlik-cloud) REST APIs and QIX Engine.
 
 ## Features
 
-- Upload CSV files to Qlik Cloud using multipart form data
-- Support for both file path and binary content uploads
-- Automatic overwrite handling with delete-and-retry logic
-- File size validation (500MB limit)
-- Comprehensive error handling with custom error types
-- Support for multiple tenant configurations
-- Built-in retry logic and configurable timeouts
-- Full test coverage with mocked HTTP interactions
+**REST APIs** - Full coverage of Qlik Cloud management APIs:
+- **Apps** - Create, manage, publish, and export Qlik Sense applications
+- **Spaces** - Manage shared and managed spaces with role assignments
+- **Data Files** - Upload, manage, and organize data files
+- **Reloads** - Trigger and monitor app data reloads
+- **Users & Groups** - User management and access control
+- **Automations** - Create and run no-code workflows
+- **Webhooks** - Configure event notifications
+- **And more** - API Keys, Data Connections, Items, Collections, Reports, Natural Language
+
+**QIX Engine** - Real-time data extraction via WebSocket:
+- Connect to apps and navigate sheets/objects
+- **Extract hypercube data** from visualizations (the core value!)
+- Make selections and filter data
+- Evaluate custom expressions
+- Stream large datasets efficiently
 
 ## Installation
 
-Add `qlik_elixir` to your list of dependencies in `mix.exs`:
+Add `qlik_elixir` to your dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:qlik_elixir, "~> 0.2.0"}
+    {:qlik_elixir, "~> 0.3.0"}
   ]
 end
 ```
 
-Then run:
+## Quick Start
 
-```bash
-mix deps.get
-```
-
-## Configuration
-
-### Environment Variables
-
-The simplest way to configure QlikElixir is through environment variables:
-
-```bash
-export QLIK_API_KEY="your-api-key"
-export QLIK_TENANT_URL="https://your-tenant.qlikcloud.com"
-export QLIK_CONNECTION_ID="your-connection-id"  # Optional
-```
-
-### Application Configuration
-
-You can also configure it in your `config/config.exs`:
+### Configuration
 
 ```elixir
+# Option 1: Environment variables (recommended for production)
+# QLIK_API_KEY=your-api-key
+# QLIK_TENANT_URL=https://your-tenant.region.qlikcloud.com
+
+# Option 2: Application config
 config :qlik_elixir,
   api_key: "your-api-key",
-  tenant_url: "https://your-tenant.qlikcloud.com",
-  connection_id: "your-connection-id"  # Optional
-```
+  tenant_url: "https://your-tenant.region.qlikcloud.com"
 
-### Runtime Configuration
-
-For runtime configuration or multiple tenants:
-
-```elixir
+# Option 3: Runtime config (for multiple tenants)
 config = QlikElixir.new_config(
-  api_key: "different-key",
-  tenant_url: "https://other-tenant.qlikcloud.com",
-  connection_id: "space-123",
-  http_options: [timeout: 60_000]  # 1 minute timeout
+  api_key: "your-api-key",
+  tenant_url: "https://your-tenant.region.qlikcloud.com"
 )
-
-QlikElixir.upload_csv("data.csv", config: config)
 ```
 
-## Usage
-
-### Basic File Upload
+### REST API Examples
 
 ```elixir
+# List apps
+{:ok, %{"data" => apps}} = QlikElixir.REST.Apps.list()
+
+# Get app details
+{:ok, app} = QlikElixir.REST.Apps.get("app-id")
+
+# Trigger a reload
+{:ok, reload} = QlikElixir.REST.Reloads.create("app-id")
+
 # Upload a CSV file
-{:ok, %{"id" => file_id}} = QlikElixir.upload_csv("path/to/data.csv")
+{:ok, file} = QlikElixir.REST.DataFiles.upload_file("sales_data.csv")
 
-# Upload with custom name
-{:ok, file} = QlikElixir.upload_csv("data.csv", name: "renamed_file.csv")
-
-# Upload with overwrite
-{:ok, file} = QlikElixir.upload_csv("data.csv", overwrite: true)
-
-# Upload to specific connection
-{:ok, file} = QlikElixir.upload_csv("data.csv", connection_id: "space-123")
+# List spaces
+{:ok, %{"data" => spaces}} = QlikElixir.REST.Spaces.list()
 ```
 
-### Upload Content Directly
+### QIX Engine - Data Extraction
 
 ```elixir
-# Create CSV content dynamically
-csv_content = "id,name,email\n1,John Doe,john@example.com\n2,Jane Smith,jane@example.com"
+alias QlikElixir.QIX.{Session, App}
 
-# Upload the content
-{:ok, file} = QlikElixir.upload_csv_content(csv_content, "users.csv")
+# Connect to an app
+{:ok, session} = Session.connect("app-id", config: config)
 
-# With options
-{:ok, file} = QlikElixir.upload_csv_content(
-  csv_content, 
-  "users.csv",
-  connection_id: "space-456",
-  overwrite: true
-)
+# List sheets
+{:ok, sheets} = App.list_sheets(session)
+
+# Get visualization data (the main event!)
+{:ok, data} = App.get_hypercube_data(session, "object-id")
+# Returns:
+# %{
+#   headers: ["Country", "Sales", "Margin"],
+#   rows: [
+#     %{text: ["USA", "$1.2M", "23%"], values: ["USA", 1200000, 0.23]},
+#     %{text: ["Germany", "$900K", "19%"], values: ["Germany", 900000, 0.19]}
+#   ],
+#   total_rows: 50,
+#   truncated: false
+# }
+
+# Make selections
+:ok = App.select_values(session, "Country", ["USA", "Germany"])
+
+# Evaluate expressions
+{:ok, total} = App.evaluate(session, "Sum(Sales)")
+
+# Disconnect
+:ok = Session.disconnect(session)
 ```
 
-### List Files
+## API Reference
+
+### REST APIs
+
+| Module | Description | Qlik API Reference |
+|--------|-------------|-------------------|
+| [`QlikElixir.REST.Apps`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.Apps.html) | App management, publishing, export/import | [Apps API](https://qlik.dev/apis/rest/apps/) |
+| [`QlikElixir.REST.Spaces`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.Spaces.html) | Spaces and role assignments | [Spaces API](https://qlik.dev/apis/rest/spaces/) |
+| [`QlikElixir.REST.DataFiles`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.DataFiles.html) | File upload and management | [Data Files API](https://qlik.dev/apis/rest/data-files/) |
+| [`QlikElixir.REST.Reloads`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.Reloads.html) | Trigger and monitor reloads | [Reloads API](https://qlik.dev/apis/rest/reloads/) |
+| [`QlikElixir.REST.Users`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.Users.html) | User management | [Users API](https://qlik.dev/apis/rest/users/) |
+| [`QlikElixir.REST.Groups`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.Groups.html) | Group management | [Groups API](https://qlik.dev/apis/rest/groups/) |
+| [`QlikElixir.REST.APIKeys`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.APIKeys.html) | API key management | [API Keys API](https://qlik.dev/apis/rest/api-keys/) |
+| [`QlikElixir.REST.Automations`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.Automations.html) | Automation workflows | [Automations API](https://qlik.dev/apis/rest/automations/) |
+| [`QlikElixir.REST.Webhooks`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.Webhooks.html) | Event notifications | [Webhooks API](https://qlik.dev/apis/rest/webhooks/) |
+| [`QlikElixir.REST.DataConnections`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.DataConnections.html) | External data sources | [Data Connections API](https://qlik.dev/apis/rest/data-connections/) |
+| [`QlikElixir.REST.Items`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.Items.html) | Unified resource listing | [Items API](https://qlik.dev/apis/rest/items/) |
+| [`QlikElixir.REST.Collections`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.Collections.html) | Content organization | [Collections API](https://qlik.dev/apis/rest/collections/) |
+| [`QlikElixir.REST.Reports`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.Reports.html) | Report generation | [Reports API](https://qlik.dev/apis/rest/reports/) |
+| [`QlikElixir.REST.Tenants`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.Tenants.html) | Tenant configuration | [Tenants API](https://qlik.dev/apis/rest/tenants/) |
+| [`QlikElixir.REST.Roles`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.Roles.html) | Role definitions | [Roles API](https://qlik.dev/apis/rest/roles/) |
+| [`QlikElixir.REST.Audits`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.Audits.html) | Audit logging | [Audits API](https://qlik.dev/apis/rest/audits/) |
+| [`QlikElixir.REST.NaturalLanguage`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.NaturalLanguage.html) | Conversational analytics | [Insight Advisor API](https://qlik.dev/apis/rest/nl/) |
+
+### QIX Engine (WebSocket)
+
+| Module | Description | Qlik API Reference |
+|--------|-------------|-------------------|
+| [`QlikElixir.QIX.Session`](https://hexdocs.pm/qlik_elixir/QlikElixir.QIX.Session.html) | WebSocket connection management | [QIX Overview](https://qlik.dev/apis/json-rpc/qix/) |
+| [`QlikElixir.QIX.App`](https://hexdocs.pm/qlik_elixir/QlikElixir.QIX.App.html) | High-level data extraction API | [Doc API](https://qlik.dev/apis/json-rpc/qix/doc/) |
+| [`QlikElixir.QIX.Protocol`](https://hexdocs.pm/qlik_elixir/QlikElixir.QIX.Protocol.html) | JSON-RPC protocol handling | [GenericObject API](https://qlik.dev/apis/json-rpc/qix/genericobject/) |
+
+### Core Modules
+
+| Module | Description |
+|--------|-------------|
+| [`QlikElixir.Config`](https://hexdocs.pm/qlik_elixir/QlikElixir.Config.html) | Configuration management |
+| [`QlikElixir.Error`](https://hexdocs.pm/qlik_elixir/QlikElixir.Error.html) | Error types and handling |
+| [`QlikElixir.Pagination`](https://hexdocs.pm/qlik_elixir/QlikElixir.Pagination.html) | Cursor-based pagination helpers |
+
+## Common Patterns
+
+### Pagination
+
+All list endpoints support cursor-based pagination:
 
 ```elixir
-# List all files (up to 100)
-{:ok, %{"data" => files, "total" => total}} = QlikElixir.list_files()
+# First page
+{:ok, %{"data" => apps, "links" => %{"next" => %{"href" => next_url}}}} =
+  QlikElixir.REST.Apps.list(limit: 20)
 
-# With pagination
-{:ok, result} = QlikElixir.list_files(limit: 20, offset: 40)
-```
+# Get cursor from next URL and fetch next page
+{:ok, page2} = QlikElixir.REST.Apps.list(limit: 20, next: cursor)
 
-### Check File Existence
-
-```elixir
-# Check if a file exists by name
-if QlikElixir.file_exists?("important_data.csv") do
-  IO.puts("File already exists!")
-end
-```
-
-### Find File by Name
-
-```elixir
-case QlikElixir.find_file_by_name("sales_data.csv") do
-  {:ok, file} ->
-    IO.puts("Found file with ID: #{file["id"]}")
-  
-  {:error, _} ->
-    IO.puts("File not found")
-end
-```
-
-### Delete Files
-
-```elixir
-# Delete by file ID
-case QlikElixir.delete_file("file-id-123") do
-  :ok ->
-    IO.puts("File deleted successfully")
-  
-  {:error, error} ->
-    IO.puts("Failed to delete: #{error.message}")
-end
-```
-
-## Advanced Usage
-
-### Custom Configuration per Request
-
-```elixir
-# Create a custom config for a specific tenant
-eu_config = QlikElixir.new_config(
-  api_key: System.get_env("EU_QLIK_API_KEY"),
-  tenant_url: "https://eu-tenant.qlikcloud.com"
-)
-
-# Use it for specific operations
-{:ok, file} = QlikElixir.upload_csv("eu_data.csv", config: eu_config)
-{:ok, files} = QlikElixir.list_files(config: eu_config)
+# Or use the Pagination helper
+QlikElixir.Pagination.stream(fn cursor ->
+  QlikElixir.REST.Apps.list(limit: 100, next: cursor)
+end)
+|> Enum.take(500)  # Get up to 500 apps
 ```
 
 ### Error Handling
 
-QlikElixir provides detailed error information:
-
 ```elixir
-case QlikElixir.upload_csv("data.csv") do
-  {:ok, file} ->
-    IO.puts("Uploaded successfully: #{file["id"]}")
-  
+case QlikElixir.REST.Apps.get("app-id") do
+  {:ok, app} ->
+    IO.puts("Found app: #{app["name"]}")
+
+  {:error, %QlikElixir.Error{type: :not_found}} ->
+    IO.puts("App not found")
+
+  {:error, %QlikElixir.Error{type: :authentication_error}} ->
+    IO.puts("Invalid API key")
+
   {:error, %QlikElixir.Error{} = error} ->
-    case error.type do
-      :file_exists_error ->
-        IO.puts("File already exists. Use overwrite: true to replace it.")
-      
-      :file_too_large ->
-        IO.puts("File is too large. Maximum size is 500MB.")
-      
-      :authentication_error ->
-        IO.puts("Invalid API key. Please check your configuration.")
-      
-      :validation_error ->
-        IO.puts("Validation failed: #{error.message}")
-      
-      _ ->
-        IO.puts("Upload failed: #{error.message}")
-    end
+    IO.puts("Error: #{error.message}")
 end
 ```
 
-### Batch Operations
+### Multiple Tenants
 
 ```elixir
-# Upload multiple files
-files = ["data1.csv", "data2.csv", "data3.csv"]
+# Create configs for different tenants
+us_config = QlikElixir.new_config(
+  api_key: System.fetch_env!("US_QLIK_API_KEY"),
+  tenant_url: "https://us-tenant.us.qlikcloud.com"
+)
 
-results = Enum.map(files, fn file ->
-  case QlikElixir.upload_csv(file) do
-    {:ok, result} -> {:ok, file, result["id"]}
-    {:error, error} -> {:error, file, error}
-  end
-end)
+eu_config = QlikElixir.new_config(
+  api_key: System.fetch_env!("EU_QLIK_API_KEY"),
+  tenant_url: "https://eu-tenant.eu.qlikcloud.com"
+)
 
-# Process results
-Enum.each(results, fn
-  {:ok, file, id} -> IO.puts("✓ #{file} uploaded as #{id}")
-  {:error, file, error} -> IO.puts("✗ #{file} failed: #{error.message}")
-end)
+# Use specific config per request
+{:ok, us_apps} = QlikElixir.REST.Apps.list(config: us_config)
+{:ok, eu_apps} = QlikElixir.REST.Apps.list(config: eu_config)
 ```
 
-### Progress Monitoring
-
-For large file uploads, you might want to show progress:
+### Streaming Large Datasets
 
 ```elixir
-defmodule UploadProgress do
-  def upload_with_progress(file_path) do
-    %{size: file_size} = File.stat!(file_path)
-    
-    IO.puts("Uploading #{Path.basename(file_path)} (#{format_bytes(file_size)})...")
-    
-    case QlikElixir.upload_csv(file_path) do
-      {:ok, result} ->
-        IO.puts("✓ Upload complete! File ID: #{result["id"]}")
-        {:ok, result}
-      
-      {:error, error} ->
-        IO.puts("✗ Upload failed: #{error.message}")
-        {:error, error}
-    end
-  end
-  
-  defp format_bytes(bytes) when bytes < 1024, do: "#{bytes} B"
-  defp format_bytes(bytes) when bytes < 1024 * 1024, do: "#{Float.round(bytes / 1024, 1)} KB"
-  defp format_bytes(bytes), do: "#{Float.round(bytes / (1024 * 1024), 1)} MB"
-end
+alias QlikElixir.QIX.{Session, App}
+
+{:ok, session} = Session.connect("app-id", config: config)
+
+# Stream hypercube data in pages
+App.stream_hypercube_data(session, "object-id", page_size: 1000)
+|> Stream.flat_map(& &1)
+|> Stream.each(fn row ->
+  # Process each row
+  IO.inspect(row)
+end)
+|> Stream.run()
 ```
 
-## HTTP Options
-
-You can customize HTTP behavior through configuration:
+## Configuration Options
 
 ```elixir
 config = QlikElixir.new_config(
-  api_key: "your-key",
-  tenant_url: "https://your-tenant.qlikcloud.com",
+  # Required
+  api_key: "your-api-key",
+  tenant_url: "https://your-tenant.region.qlikcloud.com",
+
+  # Optional
+  connection_id: "default-connection-id",  # For data files
   http_options: [
-    timeout: :timer.minutes(10),     # 10 minute timeout for large files
-    retry: :transient,               # Retry on transient errors
-    max_retries: 5,                  # Maximum number of retries
-    retry_delay: fn n -> n * 2000 end # Exponential backoff
+    timeout: :timer.minutes(5),    # Request timeout
+    retry: :transient,              # Retry strategy
+    max_retries: 3,                 # Max retry attempts
+    retry_delay: fn n -> n * 1000 end  # Backoff function
   ]
 )
 ```
 
-## Error Types
-
-QlikElixir defines the following error types:
-
-- `:validation_error` - Invalid input parameters
-- `:upload_error` - General upload failure
-- `:authentication_error` - Invalid or missing API key
-- `:configuration_error` - Invalid configuration
-- `:file_exists_error` - File already exists (when overwrite is false)
-- `:file_not_found` - File or resource not found
-- `:file_too_large` - File exceeds 500MB limit
-- `:network_error` - Network connectivity issues
-- `:unknown_error` - Unexpected errors
-
-## Testing
-
-Run the test suite:
+## Development
 
 ```bash
+# Install dependencies
+mix deps.get
+
+# Run tests
 mix test
-```
 
-Run with coverage:
+# Run with coverage
+mix test --cover
 
-```bash
-mix coveralls.html
+# Check code quality
+mix format --check-formatted
+mix credo --strict
+mix dialyzer
+
+# Generate docs
+mix docs
 ```
 
 ## Contributing
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+3. Write tests first (TDD encouraged)
+4. Ensure all checks pass (`mix format && mix credo --strict && mix test`)
+5. Commit your changes
+6. Push to the branch
+7. Open a Pull Request
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT License - see [LICENSE](LICENSE) for details.
 
-## Acknowledgments
+## Links
 
-- Built with [Req](https://hexdocs.pm/req) for HTTP client functionality
-- Inspired by the Qlik Cloud API documentation
-- Thanks to the Elixir community for the amazing ecosystem
+- [HexDocs](https://hexdocs.pm/qlik_elixir)
+- [Hex.pm](https://hex.pm/packages/qlik_elixir)
+- [GitHub](https://github.com/dgilperez/qlik_elixir)
+- [Qlik Developer Portal](https://qlik.dev/)
+
+---
+
+## Sponsored by
+
+This project is proudly sponsored by **[Balneario - Clínica de Longevidad de Cofrentes](https://balneario.com)**, a world-class longevity clinic and thermal spa in Valencia, Spain. Their support makes open source development like this possible.
+
+Thank you for investing in the developer community!

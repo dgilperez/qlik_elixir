@@ -1,7 +1,7 @@
 defmodule QlikElixir.MultipartFixTest do
   use ExUnit.Case
 
-  alias QlikElixir.{Uploader, Config}
+  alias QlikElixir.{Config, Uploader}
 
   test "multipart format is compatible with Req expectations" do
     bypass = Bypass.open()

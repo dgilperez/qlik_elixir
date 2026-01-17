@@ -4,9 +4,8 @@ defmodule QlikElixir.Uploader do
   """
 
   alias QlikElixir.{Client, Config, Error}
+  alias QlikElixir.REST.Helpers
 
-  # 500MB in bytes
-  @max_file_size 500 * 1024 * 1024
   @upload_endpoint "api/v1/data-files"
 
   @doc """
@@ -14,8 +13,8 @@ defmodule QlikElixir.Uploader do
   """
   @spec upload_file(String.t(), Config.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
   def upload_file(file_path, config, opts \\ []) do
-    with {:ok, %{size: size}} <- validate_file(file_path),
-         :ok <- validate_file_size(size),
+    with {:ok, %{size: size}} <- Helpers.validate_file(file_path),
+         :ok <- Helpers.validate_file_size(size),
          {:ok, content} <- File.read(file_path),
          filename <- opts[:name] || Path.basename(file_path) do
       upload_content(content, filename, config, opts)
@@ -27,8 +26,8 @@ defmodule QlikElixir.Uploader do
   """
   @spec upload_content(binary(), String.t(), Config.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
   def upload_content(content, filename, config, opts \\ []) do
-    with :ok <- validate_file_size(byte_size(content)),
-         :ok <- validate_filename(filename),
+    with :ok <- Helpers.validate_file_size(byte_size(content)),
+         :ok <- Helpers.validate_filename(filename),
          {:ok, validated_config} <- Config.validate(config) do
       perform_upload(content, filename, validated_config, opts)
     end
@@ -36,23 +35,24 @@ defmodule QlikElixir.Uploader do
 
   defp perform_upload(content, filename, config, opts) do
     connection_id = opts[:connection_id] || config.connection_id
-
     multipart = build_multipart(content, filename, connection_id)
 
     case Client.post(@upload_endpoint, {:multipart, multipart}, config) do
-      {:ok, response} ->
-        {:ok, response}
+      {:ok, _} = success ->
+        success
 
       {:error, %Error{type: :file_exists_error}} = error ->
-        if Keyword.get(opts, :overwrite, false) do
-          handle_overwrite(content, filename, config, opts)
-        else
-          error
-        end
+        maybe_overwrite(error, content, filename, config, opts)
 
       error ->
         error
     end
+  end
+
+  defp maybe_overwrite(error, content, filename, config, opts) do
+    if Keyword.get(opts, :overwrite, false),
+      do: handle_overwrite(content, filename, config, opts),
+      else: error
   end
 
   defp handle_overwrite(content, filename, config, opts) do
@@ -60,28 +60,22 @@ defmodule QlikElixir.Uploader do
 
     with {:ok, existing_file} <- find_file_by_name(filename, config, connection_id),
          :ok <- delete_file(existing_file["id"], config) do
-      # Retry upload after deletion
-      opts = Keyword.put(opts, :overwrite, false)
-      perform_upload(content, filename, config, opts)
-    else
-      error ->
-        # Return the error from find_file_by_name or delete_file
-        error
+      perform_upload(content, filename, config, Keyword.put(opts, :overwrite, false))
     end
   end
 
   defp find_file_by_name(filename, config, connection_id) do
-    # Build query params with connection filter if provided
-    query_params =
-      if connection_id do
-        "?limit=100&connectionId=#{connection_id}"
-      else
-        "?limit=100"
-      end
+    query =
+      []
+      |> Helpers.add_param(:limit, 100)
+      |> Helpers.add_param(:connectionId, connection_id)
+      |> QlikElixir.Pagination.build_query()
 
-    case Client.get("#{@upload_endpoint}#{query_params}", config) do
+    path = Helpers.build_path(@upload_endpoint, query)
+
+    case Client.get(path, config) do
       {:ok, %{"data" => files}} ->
-        case Enum.find(files, fn file -> file["name"] == filename end) do
+        case Enum.find(files, &(&1["name"] == filename)) do
           nil -> {:error, Error.file_not_found("File not found: #{filename}")}
           file -> {:ok, file}
         end
@@ -99,58 +93,13 @@ defmodule QlikElixir.Uploader do
   end
 
   defp build_multipart(content, filename, connection_id) do
-    # Build the JSON metadata
-    json_data = %{"name" => filename}
-    json_data = if connection_id, do: Map.put(json_data, "connectionId", connection_id), else: json_data
+    json_data =
+      %{"name" => filename}
+      |> Helpers.put_if_present("connectionId", connection_id)
 
-    # Qlik API expects 'File' and 'Json' fields (capitalized)
-    # Req expects {name, {value, options}} format for fields with options
     [
       {"Json", {Jason.encode!(json_data), [content_type: "application/json"]}},
       {"File", {content, [filename: filename, content_type: "text/csv"]}}
     ]
-  end
-
-  defp validate_file(file_path) do
-    case File.stat(file_path) do
-      {:ok, stat} ->
-        if stat.type == :regular do
-          {:ok, stat}
-        else
-          {:error, Error.validation_error("#{file_path} is not a regular file")}
-        end
-
-      {:error, :enoent} ->
-        {:error, Error.file_not_found("File not found: #{file_path}")}
-
-      {:error, reason} ->
-        {:error, Error.validation_error("Cannot access file: #{inspect(reason)}")}
-    end
-  end
-
-  defp validate_file_size(size) when size > @max_file_size do
-    {:error,
-     Error.file_too_large(
-       "File size (#{format_bytes(size)}) exceeds maximum allowed size (#{format_bytes(@max_file_size)})"
-     )}
-  end
-
-  defp validate_file_size(_), do: :ok
-
-  defp validate_filename(filename) do
-    if String.ends_with?(filename, ".csv") do
-      :ok
-    else
-      {:error, Error.validation_error("Filename must end with .csv extension")}
-    end
-  end
-
-  defp format_bytes(bytes) do
-    cond do
-      bytes >= 1024 * 1024 * 1024 -> "#{Float.round(bytes / (1024 * 1024 * 1024), 2)} GB"
-      bytes >= 1024 * 1024 -> "#{Float.round(bytes / (1024 * 1024), 2)} MB"
-      bytes >= 1024 -> "#{Float.round(bytes / 1024, 2)} KB"
-      true -> "#{bytes} B"
-    end
   end
 end

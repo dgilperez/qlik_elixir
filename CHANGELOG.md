@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-01-17
+
+### Added
+
+**QIX Engine Support (WebSocket)**
+- New `QlikElixir.QIX.Session` module for WebSocket connection management
+- New `QlikElixir.QIX.App` module for high-level data extraction API
+  - `list_sheets/2` - List all sheets in an app
+  - `list_objects/3` - List visualization objects on a sheet
+  - `get_object/3` - Get object handle
+  - `get_layout/3` - Get object layout
+  - `get_hypercube_data/3` - Extract data from visualizations with pagination
+  - `stream_hypercube_data/3` - Stream large datasets
+  - `select_values/4` - Make selections in fields
+  - `clear_selections/2` - Clear all selections
+  - `evaluate/3` - Evaluate Qlik expressions
+- New `QlikElixir.QIX.Protocol` module for JSON-RPC protocol handling
+
+**REST API Modules**
+- `QlikElixir.REST.Apps` - Full Apps API with publish, export, import, scripts, media
+- `QlikElixir.REST.Spaces` - Spaces and role assignments
+- `QlikElixir.REST.Reloads` - Trigger and monitor app reloads
+- `QlikElixir.REST.Users` - User management including invitations
+- `QlikElixir.REST.Groups` - Group management
+- `QlikElixir.REST.APIKeys` - API key management
+- `QlikElixir.REST.Automations` - Automation workflows and runs
+- `QlikElixir.REST.Webhooks` - Event notifications and deliveries
+- `QlikElixir.REST.DataConnections` - External data sources
+- `QlikElixir.REST.Items` - Unified resource listing
+- `QlikElixir.REST.Collections` - Content organization and favorites
+- `QlikElixir.REST.Reports` - Report generation and download
+- `QlikElixir.REST.Tenants` - Tenant configuration
+- `QlikElixir.REST.Roles` - Role definitions
+- `QlikElixir.REST.Audits` - Audit event logging
+- `QlikElixir.REST.NaturalLanguage` - Conversational analytics (Insight Advisor)
+
+**Data Files API Enhancements**
+- `change_owner/3` - Change file owner
+- `change_space/3` - Move file to another space
+- `batch_delete/2` - Delete multiple files
+- `batch_change_space/3` - Move multiple files
+- `get_quotas/1` - Get storage quotas
+- `list_connections/1` - List available connections
+
+**Infrastructure**
+- `QlikElixir.Pagination` module for cursor-based pagination
+- `QlikElixir.REST.Helpers` for shared REST API utilities
+- Comprehensive documentation with guides
+- 360+ tests with full coverage
+
+### Changed
+- Reorganized codebase under `QlikElixir.REST.*` and `QlikElixir.QIX.*` namespaces
+- Updated package description
+- Improved error handling across all modules
+
 ## [0.2.2] - 2025-01-12
 
 ### Fixed
@@ -52,7 +107,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Full test coverage with Bypass for HTTP mocking
 - Comprehensive documentation and examples
 
-[Unreleased]: https://github.com/dgilperez/qlik_elixir/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/dgilperez/qlik_elixir/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/dgilperez/qlik_elixir/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/dgilperez/qlik_elixir/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/dgilperez/qlik_elixir/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/dgilperez/qlik_elixir/compare/v0.1.0...v0.2.0

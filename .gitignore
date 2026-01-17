@@ -37,3 +37,11 @@ qlik_elixir-*.tar
 # OS specific files
 .DS_Store
 Thumbs.db
+
+# Environment files (contain secrets)
+.env
+.env.local
+.env.*.local
+
+# Claude Code local files
+.claude/

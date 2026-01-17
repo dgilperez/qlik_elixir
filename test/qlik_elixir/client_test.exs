@@ -116,6 +116,66 @@ defmodule QlikElixir.ClientTest do
     end
   end
 
+  describe "put/4" do
+    test "successful PUT request with JSON body", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "PUT", "/api/v1/apps/123", fn conn ->
+        assert_auth_header(conn, "test-key")
+        assert Plug.Conn.get_req_header(conn, "content-type") == ["application/json"]
+
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        assert Jason.decode!(body) == %{"name" => "Updated App"}
+
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, Jason.encode!(%{id: "123", name: "Updated App"}))
+      end)
+
+      assert {:ok, %{"id" => "123", "name" => "Updated App"}} =
+               Client.put("api/v1/apps/123", %{name: "Updated App"}, config)
+    end
+
+    test "handles 404 not found", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "PUT", "/api/v1/apps/123", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(404, Jason.encode!(%{message: "Not found"}))
+      end)
+
+      assert {:error, %Error{type: :file_not_found}} =
+               Client.put("api/v1/apps/123", %{name: "Updated"}, config)
+    end
+  end
+
+  describe "patch/4" do
+    test "successful PATCH request with JSON body", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "PATCH", "/api/v1/spaces/456", fn conn ->
+        assert_auth_header(conn, "test-key")
+        assert Plug.Conn.get_req_header(conn, "content-type") == ["application/json"]
+
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        assert Jason.decode!(body) == %{"description" => "New description"}
+
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, Jason.encode!(%{id: "456", description: "New description"}))
+      end)
+
+      assert {:ok, %{"id" => "456", "description" => "New description"}} =
+               Client.patch("api/v1/spaces/456", %{description: "New description"}, config)
+    end
+
+    test "handles 403 forbidden", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "PATCH", "/api/v1/spaces/456", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(403, Jason.encode!(%{message: "Forbidden"}))
+      end)
+
+      assert {:error, %Error{type: :authorization_error}} =
+               Client.patch("api/v1/spaces/456", %{}, config)
+    end
+  end
+
   describe "delete/3" do
     test "successful DELETE request", %{bypass: bypass, config: config} do
       Bypass.expect_once(bypass, "DELETE", "/api/v1/data-files/123", fn conn ->
