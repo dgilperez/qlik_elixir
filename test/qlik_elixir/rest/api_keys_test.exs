@@ -191,9 +191,9 @@ defmodule QlikElixir.REST.APIKeysTest do
     end
   end
 
-  describe "get_config/1" do
-    test "returns API keys configuration", %{bypass: bypass, config: config} do
-      Bypass.expect_once(bypass, "GET", "/api/v1/api-keys/configs/default", fn conn ->
+  describe "get_config/2" do
+    test "returns API keys configuration for tenant", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "GET", "/api/v1/api-keys/configs/tenant-123", fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
         |> Plug.Conn.resp(
@@ -206,24 +206,14 @@ defmodule QlikElixir.REST.APIKeysTest do
         )
       end)
 
-      assert {:ok, cfg} = APIKeys.get_config(config: config)
+      assert {:ok, cfg} = APIKeys.get_config("tenant-123", config: config)
       assert cfg["api_keys_enabled"] == true
-    end
-
-    test "supports tenant_id parameter", %{bypass: bypass, config: config} do
-      Bypass.expect_once(bypass, "GET", "/api/v1/api-keys/configs/tenant-456", fn conn ->
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(200, Jason.encode!(%{api_keys_enabled: true}))
-      end)
-
-      assert {:ok, _} = APIKeys.get_config(config: config, tenant_id: "tenant-456")
     end
   end
 
-  describe "update_config/2" do
-    test "updates API keys configuration", %{bypass: bypass, config: config} do
-      Bypass.expect_once(bypass, "PATCH", "/api/v1/api-keys/configs/default", fn conn ->
+  describe "update_config/3" do
+    test "updates API keys configuration for tenant", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "PATCH", "/api/v1/api-keys/configs/tenant-123", fn conn ->
         {:ok, body, conn} = Plug.Conn.read_body(conn)
         params = Jason.decode!(body)
         assert params["api_keys_enabled"] == false
@@ -239,7 +229,7 @@ defmodule QlikElixir.REST.APIKeysTest do
         )
       end)
 
-      assert {:ok, cfg} = APIKeys.update_config(%{api_keys_enabled: false}, config: config)
+      assert {:ok, cfg} = APIKeys.update_config("tenant-123", %{api_keys_enabled: false}, config: config)
       assert cfg["api_keys_enabled"] == false
     end
   end

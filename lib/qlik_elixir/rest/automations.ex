@@ -243,10 +243,35 @@ defmodule QlikElixir.REST.Automations do
 
   @doc """
   Gets automation usage statistics.
+
+  Requires TenantAdmin role.
+
+  ## Parameters
+
+    * `filter` - Required SCIM-style filter expression. Supports:
+      - `name`: Metric name ("runs", "scheduledRun", "triggeredRun", "webhookRuns", "duration", "bandwidthIn", "bandwidthOut")
+      - `date`: Target date or range
+
+  ## Options
+
+    * `:breakdown_by` - When set to "automation", results are segmented by automation.
+
+  ## Examples
+
+      # Get total runs for a date range
+      Automations.get_usage(~s(date ge "2025-01-01" and date le "2025-01-31"))
+
+      # Get specific metric
+      Automations.get_usage(~s(name eq "duration"))
+
+      # Get runs by automation
+      Automations.get_usage(~s(date ge "2025-01-01"), breakdown_by: "automation")
+
   """
-  @spec get_usage(keyword()) :: {:ok, map()} | {:error, Error.t()}
-  def get_usage(opts \\ []) do
-    path = "#{@base_path}/usage"
+  @spec get_usage(String.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
+  def get_usage(filter, opts \\ []) when is_binary(filter) do
+    query = Helpers.build_query([{:filter, filter} | opts], [{:filter, :filter}, {:breakdownBy, :breakdown_by}])
+    path = Helpers.build_path("#{@base_path}/usage", query)
     Client.get(path, Helpers.get_config(opts))
   end
 end

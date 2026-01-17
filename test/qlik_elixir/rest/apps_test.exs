@@ -305,7 +305,7 @@ defmodule QlikElixir.REST.AppsTest do
 
   describe "get_script/2" do
     test "returns load script", %{bypass: bypass, config: config} do
-      Bypass.expect_once(bypass, "GET", "/api/v1/apps/app-123/script", fn conn ->
+      Bypass.expect_once(bypass, "GET", "/api/v1/apps/app-123/scripts", fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
         |> Plug.Conn.resp(

@@ -244,17 +244,19 @@ defmodule QlikElixir.REST.Apps do
   end
 
   @doc """
-  Gets the load script of an app.
+  Gets the load script history of an app.
+
+  Returns a list of saved script versions, sorted with latest first.
 
   ## Examples
 
       iex> QlikElixir.REST.Apps.get_script("app-123")
-      {:ok, %{"script" => "LOAD * FROM ..."}}
+      {:ok, [%{"id" => "v1", "script" => "LOAD * FROM ..."}]}
 
   """
-  @spec get_script(String.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
+  @spec get_script(String.t(), keyword()) :: {:ok, list()} | {:error, Error.t()}
   def get_script(app_id, opts \\ []) do
-    Client.get("#{@base_path}/#{app_id}/script", Helpers.get_config(opts))
+    Client.get("#{@base_path}/#{app_id}/scripts", Helpers.get_config(opts))
   end
 
   @doc """

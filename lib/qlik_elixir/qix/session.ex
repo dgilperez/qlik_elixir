@@ -295,7 +295,9 @@ defmodule QlikElixir.QIX.Session do
     gun_opts = %{
       connect_timeout: timeout,
       transport: transport,
-      tls_opts: tls_opts
+      tls_opts: tls_opts,
+      # Force HTTP/1.1 - WebSocket upgrades don't work over HTTP/2
+      protocols: [:http]
     }
 
     case :gun.open(host, port, gun_opts) do
@@ -311,9 +313,12 @@ defmodule QlikElixir.QIX.Session do
   end
 
   defp upgrade_to_websocket(conn_pid, host, path, config, timeout) do
+    origin = String.trim_trailing(config.tenant_url, "/")
+
     headers = [
       {~c"authorization", ~c"Bearer #{config.api_key}"},
-      {~c"host", host}
+      {~c"host", host},
+      {~c"origin", String.to_charlist(origin)}
     ]
 
     stream_ref = :gun.ws_upgrade(conn_pid, path, headers)
@@ -335,7 +340,8 @@ defmodule QlikElixir.QIX.Session do
 
   defp open_app(conn_pid, stream_ref, app_id, timeout) do
     params = Protocol.build_open_doc(app_id)
-    {:ok, json, request_id} = Protocol.encode_request("OpenDoc", 0, params, 1)
+    # Global handle is -1 in QIX API
+    {:ok, json, request_id} = Protocol.encode_request("OpenDoc", -1, params, 1)
 
     case :gun.ws_send(conn_pid, stream_ref, {:text, json}) do
       :ok ->

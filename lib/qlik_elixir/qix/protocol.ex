@@ -104,10 +104,12 @@ defmodule QlikElixir.QIX.Protocol do
 
   @doc """
   Builds params for Global.OpenDoc request.
+
+  Note: QIX API expects params as a map, not array.
   """
-  @spec build_open_doc(String.t()) :: list(map())
+  @spec build_open_doc(String.t()) :: map()
   def build_open_doc(app_id) do
-    [%{"qDocName" => app_id}]
+    %{"qDocName" => app_id}
   end
 
   @doc """
@@ -120,10 +122,12 @@ defmodule QlikElixir.QIX.Protocol do
 
   @doc """
   Builds params for Doc.GetObject request.
+
+  Note: QIX API expects params as a map, not array.
   """
-  @spec build_get_object(String.t()) :: list(map())
+  @spec build_get_object(String.t()) :: map()
   def build_get_object(object_id) do
-    [%{"qId" => object_id}]
+    %{"qId" => object_id}
   end
 
   @doc """
@@ -143,7 +147,7 @@ defmodule QlikElixir.QIX.Protocol do
     * `pages` - List of page requests (defaults to first 1000 rows)
 
   """
-  @spec build_get_hypercube_data(String.t(), list(map())) :: list()
+  @spec build_get_hypercube_data(String.t(), list(map())) :: map()
   def build_get_hypercube_data(path, []) do
     default_page = %{
       "qTop" => 0,
@@ -152,7 +156,7 @@ defmodule QlikElixir.QIX.Protocol do
       "qWidth" => @default_page_width
     }
 
-    [path, [default_page]]
+    %{"qPath" => path, "qPages" => [default_page]}
   end
 
   def build_get_hypercube_data(path, pages) do
@@ -166,7 +170,7 @@ defmodule QlikElixir.QIX.Protocol do
         }
       end)
 
-    [path, converted_pages]
+    %{"qPath" => path, "qPages" => converted_pages}
   end
 
   # Response extractors

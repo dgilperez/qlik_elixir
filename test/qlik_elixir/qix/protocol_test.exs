@@ -75,7 +75,7 @@ defmodule QlikElixir.QIX.ProtocolTest do
     test "creates OpenDoc request params" do
       params = Protocol.build_open_doc("app-123")
 
-      assert params == [%{"qDocName" => "app-123"}]
+      assert params == %{"qDocName" => "app-123"}
     end
   end
 
@@ -91,7 +91,7 @@ defmodule QlikElixir.QIX.ProtocolTest do
     test "creates GetObject request params" do
       params = Protocol.build_get_object("chart-abc")
 
-      assert params == [%{"qId" => "chart-abc"}]
+      assert params == %{"qId" => "chart-abc"}
     end
   end
 
@@ -107,9 +107,8 @@ defmodule QlikElixir.QIX.ProtocolTest do
     test "creates GetHyperCubeData request params with defaults" do
       params = Protocol.build_get_hypercube_data("/qHyperCubeDef", [])
 
-      assert [path, pages] = params
-      assert path == "/qHyperCubeDef"
-      assert [page] = pages
+      assert params["qPath"] == "/qHyperCubeDef"
+      assert [page] = params["qPages"]
       assert page["qTop"] == 0
       assert page["qLeft"] == 0
       assert page["qHeight"] == 1000
@@ -120,8 +119,8 @@ defmodule QlikElixir.QIX.ProtocolTest do
       pages = [%{qTop: 100, qLeft: 0, qHeight: 500, qWidth: 10}]
       params = Protocol.build_get_hypercube_data("/qHyperCubeDef", pages)
 
-      assert [_, request_pages] = params
-      assert [page] = request_pages
+      assert params["qPath"] == "/qHyperCubeDef"
+      assert [page] = params["qPages"]
       assert page["qTop"] == 100
       assert page["qHeight"] == 500
     end

@@ -135,14 +135,14 @@ defmodule QlikElixir.QIX.AppTest do
   describe "evaluate params" do
     test "builds evaluate expression params correctly" do
       params = App.build_evaluate_params("Sum(Sales)")
-      assert params == [%{"qExpression" => "Sum(Sales)"}]
+      assert params == %{"qExpression" => "Sum(Sales)"}
     end
   end
 
   describe "build_get_field_params/1" do
     test "builds field params" do
       params = App.build_get_field_params("Country")
-      assert params == [%{"qFieldName" => "Country"}]
+      assert params == %{"qFieldName" => "Country"}
     end
   end
 end

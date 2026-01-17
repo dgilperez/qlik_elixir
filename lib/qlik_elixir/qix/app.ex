@@ -94,8 +94,17 @@ defmodule QlikElixir.QIX.App do
   """
   @spec list_sheets(pid(), keyword()) :: {:ok, list(map())} | {:error, Error.t()}
   def list_sheets(session, opts \\ []) do
+    # Use standard QIX GetObjects with qTypes filter instead of Sense mixin GetAllSheets
+    params = %{
+      "qOptions" => %{
+        "qTypes" => ["sheet"],
+        "qIncludeSessionObjects" => false,
+        "qData" => %{}
+      }
+    }
+
     with {:ok, app_handle} <- Session.get_app_handle(session),
-         result <- Session.request(session, "GetAllSheets", app_handle, [], opts) do
+         result <- Session.request(session, "GetObjects", app_handle, params, opts) do
       parse_sheets_response(result)
     end
   end
@@ -364,12 +373,12 @@ defmodule QlikElixir.QIX.App do
 
   @doc false
   def build_evaluate_params(expression) do
-    [%{"qExpression" => expression}]
+    %{"qExpression" => expression}
   end
 
   @doc false
   def build_get_field_params(field_name) do
-    [%{"qFieldName" => field_name}]
+    %{"qFieldName" => field_name}
   end
 
   # Private helpers
@@ -379,7 +388,7 @@ defmodule QlikElixir.QIX.App do
   end
 
   defp fetch_pages(_session, _handle, _path, _page_size, max_rows, top, acc, _opts) when top >= max_rows do
-    {:ok, Enum.reverse(acc) |> List.flatten()}
+    {:ok, acc |> Enum.reverse() |> Enum.concat()}
   end
 
   defp fetch_pages(session, handle, path, page_size, max_rows, top, acc, opts) do
@@ -392,11 +401,11 @@ defmodule QlikElixir.QIX.App do
       {:ok, result} ->
         case parse_hypercube_response({:ok, result}) do
           {:ok, []} ->
-            {:ok, Enum.reverse(acc) |> List.flatten()}
+            {:ok, acc |> Enum.reverse() |> Enum.concat()}
 
           {:ok, rows} ->
             if length(rows) < height do
-              {:ok, Enum.reverse([rows | acc]) |> List.flatten()}
+              {:ok, [rows | acc] |> Enum.reverse() |> Enum.concat()}
             else
               fetch_pages(session, handle, path, page_size, max_rows, top + length(rows), [rows | acc], opts)
             end
@@ -412,6 +421,7 @@ defmodule QlikElixir.QIX.App do
     [value_list, false]
   end
 
+  defp parse_evaluate_response(%{"qReturn" => value}), do: {:ok, value}
   defp parse_evaluate_response(%{"qValue" => value}) when is_number(value), do: {:ok, value}
   defp parse_evaluate_response(%{"qValue" => value}), do: {:ok, value}
   defp parse_evaluate_response(result) when is_binary(result), do: {:ok, result}

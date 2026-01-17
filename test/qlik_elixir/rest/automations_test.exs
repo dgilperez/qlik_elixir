@@ -376,9 +376,12 @@ defmodule QlikElixir.REST.AutomationsTest do
     end
   end
 
-  describe "get_usage/1" do
-    test "returns automation usage", %{bypass: bypass, config: config} do
+  describe "get_usage/2" do
+    test "returns automation usage with required filter", %{bypass: bypass, config: config} do
       Bypass.expect_once(bypass, "GET", "/api/v1/automations/usage", fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+        assert conn.query_params["filter"] == ~s(date ge "2025-01-01")
+
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
         |> Plug.Conn.resp(
@@ -391,8 +394,22 @@ defmodule QlikElixir.REST.AutomationsTest do
         )
       end)
 
-      assert {:ok, usage} = Automations.get_usage(config: config)
+      assert {:ok, usage} = Automations.get_usage(~s(date ge "2025-01-01"), config: config)
       assert usage["runCount"] == 150
+    end
+
+    test "supports breakdown_by option", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "GET", "/api/v1/automations/usage", fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+        assert conn.query_params["filter"] == ~s(name eq "runs")
+        assert conn.query_params["breakdownBy"] == "automation"
+
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, Jason.encode!(%{data: []}))
+      end)
+
+      assert {:ok, _} = Automations.get_usage(~s(name eq "runs"), breakdown_by: "automation", config: config)
     end
   end
 end

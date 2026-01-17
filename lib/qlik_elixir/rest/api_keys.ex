@@ -16,8 +16,9 @@ defmodule QlikElixir.REST.APIKeys do
       # Delete an API key
       :ok = APIKeys.delete("key-123", config: config)
 
-      # Get tenant configuration
-      {:ok, config} = APIKeys.get_config(config: config)
+      # Get tenant configuration (requires tenant ID from Tenants.me)
+      {:ok, tenant} = Tenants.me(config: config)
+      {:ok, config} = APIKeys.get_config(tenant["id"], config: config)
 
   """
 
@@ -114,14 +115,18 @@ defmodule QlikElixir.REST.APIKeys do
   @doc """
   Gets the API keys configuration for a tenant.
 
-  ## Options
+  ## Parameters
 
-    * `:tenant_id` - Optional. Tenant ID (defaults to "default").
+    * `tenant_id` - The tenant ID. Use `Tenants.me/1` to get the current tenant ID.
+
+  ## Examples
+
+      {:ok, tenant} = Tenants.me(config: config)
+      {:ok, config} = APIKeys.get_config(tenant["id"], config: config)
 
   """
-  @spec get_config(keyword()) :: {:ok, map()} | {:error, Error.t()}
-  def get_config(opts \\ []) do
-    tenant_id = Keyword.get(opts, :tenant_id, "default")
+  @spec get_config(String.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
+  def get_config(tenant_id, opts \\ []) when is_binary(tenant_id) do
     path = "#{@base_path}/configs/#{tenant_id}"
     Client.get(path, Helpers.get_config(opts))
   end
@@ -131,19 +136,15 @@ defmodule QlikElixir.REST.APIKeys do
 
   ## Parameters
 
+    * `tenant_id` - The tenant ID.
     * `params` - Map with configuration fields:
       * `:api_keys_enabled` - Enable/disable API keys.
       * `:max_api_key_expiry` - Maximum expiry duration.
       * `:max_keys_per_user` - Maximum keys per user.
 
-  ## Options
-
-    * `:tenant_id` - Optional. Tenant ID (defaults to "default").
-
   """
-  @spec update_config(map(), keyword()) :: {:ok, map()} | {:error, Error.t()}
-  def update_config(params, opts \\ []) do
-    tenant_id = Keyword.get(opts, :tenant_id, "default")
+  @spec update_config(String.t(), map(), keyword()) :: {:ok, map()} | {:error, Error.t()}
+  def update_config(tenant_id, params, opts \\ []) when is_binary(tenant_id) do
     path = "#{@base_path}/configs/#{tenant_id}"
     body = Helpers.build_body(params, [:api_keys_enabled, :max_api_key_expiry, :max_keys_per_user])
     Client.patch(path, body, Helpers.get_config(opts))
