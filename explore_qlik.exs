@@ -15,7 +15,7 @@
 #   QLIK_TEST_FILENAME - Filename to search for (default: test.qvd)
 
 alias QlikElixir.{Config, Error}
-alias QlikElixir.REST.{Apps, Spaces, Reloads, DataFiles, Users, ApiKeys, Automations, Webhooks, DataConnections}
+alias QlikElixir.REST.{Apps, Spaces, Reloads, DataFiles, Users, APIKeys, Automations, Webhooks, DataConnections}
 alias QlikElixir.REST.{Tenants, Groups, Roles, Audits}
 alias QlikElixir.REST.{Items, Collections, Reports, NaturalLanguage}
 
@@ -463,7 +463,7 @@ Explorer.header("SECTION 6: API KEYS API")
 
 # 6.1 List API keys
 Explorer.subheader("6.1 List API Keys")
-case ApiKeys.list(config: config, limit: 20) do
+case APIKeys.list(config: config, limit: 20) do
   {:ok, %{"data" => keys}} ->
     Explorer.success("Found #{length(keys)} API keys")
     Enum.take(keys, 5) |> Enum.each(fn k ->
@@ -475,7 +475,7 @@ end
 
 # 6.2 API keys config
 Explorer.subheader("6.2 API Keys Configuration")
-case ApiKeys.get_config(config: config) do
+case APIKeys.get_config(config: config) do
   {:ok, api_config} ->
     Explorer.success("API Keys config:")
     Enum.each(api_config, fn {k, v} ->
