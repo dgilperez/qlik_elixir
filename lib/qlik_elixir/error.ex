@@ -17,11 +17,14 @@ defmodule QlikElixir.Error do
           :validation_error
           | :upload_error
           | :authentication_error
+          | :authorization_error
           | :configuration_error
           | :file_exists_error
           | :file_not_found
           | :file_too_large
           | :network_error
+          | :rate_limit_error
+          | :not_found
           | :unknown_error
 
   @doc """
@@ -63,6 +66,14 @@ defmodule QlikElixir.Error do
   end
 
   @doc """
+  Creates an authorization error (403 Forbidden).
+  """
+  @spec authorization_error(String.t(), keyword()) :: t()
+  def authorization_error(message, opts \\ []) do
+    new(:authorization_error, message, opts)
+  end
+
+  @doc """
   Creates a configuration error.
   """
   @spec configuration_error(String.t(), keyword()) :: t()
@@ -100,6 +111,22 @@ defmodule QlikElixir.Error do
   @spec network_error(String.t(), keyword()) :: t()
   def network_error(message, opts \\ []) do
     new(:network_error, message, opts)
+  end
+
+  @doc """
+  Creates a rate limit error (429 Too Many Requests).
+  """
+  @spec rate_limit_error(String.t(), keyword()) :: t()
+  def rate_limit_error(message, opts \\ []) do
+    new(:rate_limit_error, message, opts)
+  end
+
+  @doc """
+  Creates a not found error (404).
+  """
+  @spec not_found(String.t(), keyword()) :: t()
+  def not_found(message, opts \\ []) do
+    new(:not_found, message, opts)
   end
 
   @doc """

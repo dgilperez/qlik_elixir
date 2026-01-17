@@ -36,6 +36,28 @@ defmodule QlikElixir.Client do
   end
 
   @doc """
+  Makes a PUT request to the Qlik API.
+  """
+  @spec put(String.t(), map(), Config.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
+  def put(path, body, config, opts \\ []) do
+    url = build_url(config, path)
+    headers = Config.headers(config)
+
+    request(:put, url, headers, body, config, opts)
+  end
+
+  @doc """
+  Makes a PATCH request to the Qlik API.
+  """
+  @spec patch(String.t(), map(), Config.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
+  def patch(path, body, config, opts \\ []) do
+    url = build_url(config, path)
+    headers = Config.headers(config)
+
+    request(:patch, url, headers, body, config, opts)
+  end
+
+  @doc """
   Makes a DELETE request to the Qlik API.
   """
   @spec delete(String.t(), Config.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
@@ -58,6 +80,10 @@ defmodule QlikElixir.Client do
 
       {:ok, %{status: 401}} ->
         {:error, Error.authentication_error("Invalid API key or unauthorized access")}
+
+      {:ok, %{status: 403, body: body}} ->
+        message = extract_error_message(body, "Access forbidden")
+        {:error, Error.authorization_error(message, details: body)}
 
       {:ok, %{status: 404, body: body}} ->
         {:error, Error.file_not_found("Resource not found", details: body)}

@@ -33,6 +33,7 @@ defmodule QlikElixir.MixProject do
     [
       {:req, "~> 0.5.0"},
       {:jason, "~> 1.4"},
+      {:gun, "~> 2.1"},
       {:bypass, "~> 2.1", only: :test},
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
