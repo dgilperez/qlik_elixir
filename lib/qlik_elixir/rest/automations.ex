@@ -192,13 +192,7 @@ defmodule QlikElixir.REST.Automations do
   @spec run(String.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
   def run(automation_id, opts \\ []) do
     path = "#{@base_path}/#{automation_id}/actions/run"
-
-    body =
-      case Keyword.get(opts, :inputs) do
-        nil -> %{}
-        inputs -> %{"inputs" => inputs}
-      end
-
+    body = Helpers.put_if_present(%{}, "inputs", opts[:inputs])
     Client.post(path, body, Helpers.get_config(opts))
   end
 

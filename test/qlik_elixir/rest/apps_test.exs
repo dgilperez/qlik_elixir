@@ -90,7 +90,7 @@ defmodule QlikElixir.REST.AppsTest do
         |> Plug.Conn.resp(404, Jason.encode!(%{message: "App not found"}))
       end)
 
-      assert {:error, %Error{type: :file_not_found}} = Apps.get("missing", config: config)
+      assert {:error, %Error{type: :not_found}} = Apps.get("missing", config: config)
     end
   end
 

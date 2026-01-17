@@ -91,7 +91,7 @@ defmodule QlikElixir.REST.DataFilesTest do
         |> Plug.Conn.resp(404, Jason.encode!(%{message: "Not found"}))
       end)
 
-      assert {:error, %Error{type: :file_not_found}} = DataFiles.get("missing", config: config)
+      assert {:error, %Error{type: :not_found}} = DataFiles.get("missing", config: config)
     end
   end
 
@@ -190,7 +190,8 @@ defmodule QlikElixir.REST.DataFilesTest do
         |> Plug.Conn.resp(404, Jason.encode!(%{message: "Not found"}))
       end)
 
-      assert {:error, %Error{type: :not_found, message: "Data file not found"}} = DataFiles.delete("missing", config: config)
+      assert {:error, %Error{type: :not_found, message: "Data file not found"}} =
+               DataFiles.delete("missing", config: config)
     end
   end
 

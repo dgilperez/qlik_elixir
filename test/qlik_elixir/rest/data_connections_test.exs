@@ -144,6 +144,7 @@ defmodule QlikElixir.REST.DataConnectionsTest do
         qType: "PostgreSQL",
         qConnectStatement: "CONNECT TO 'Provider=PostgreSQL;...';"
       }
+
       assert {:ok, connection} = DataConnections.create(params, config: config)
       assert connection["id"] == "new-conn"
     end
@@ -282,6 +283,7 @@ defmodule QlikElixir.REST.DataConnectionsTest do
         %{id: "conn-1", qName: "Updated 1"},
         %{id: "conn-2", qName: "Updated 2"}
       ]
+
       assert {:ok, %{"data" => updated}} = DataConnections.batch_update(updates, config: config)
       assert length(updated) == 2
     end

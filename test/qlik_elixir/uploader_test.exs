@@ -1,7 +1,7 @@
 defmodule QlikElixir.UploaderTest do
   use ExUnit.Case
 
-  alias QlikElixir.{Uploader, Config, Error}
+  alias QlikElixir.{Config, Error, Uploader}
 
   setup do
     bypass = Bypass.open()

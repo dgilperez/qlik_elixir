@@ -142,11 +142,9 @@ defmodule QlikElixir.QIX.Session do
   """
   @spec get_app_handle(pid()) :: {:ok, non_neg_integer()} | {:error, Error.t()}
   def get_app_handle(session) do
-    try do
-      GenServer.call(session, :get_app_handle)
-    catch
-      :exit, _ -> {:error, Error.network_error("Session not running")}
-    end
+    GenServer.call(session, :get_app_handle)
+  catch
+    :exit, _ -> {:error, Error.network_error("Session not running")}
   end
 
   @doc """

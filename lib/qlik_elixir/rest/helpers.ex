@@ -22,12 +22,7 @@ defmodule QlikElixir.REST.Helpers do
 
   """
   @spec get_config(keyword()) :: Config.t()
-  def get_config(opts) do
-    case Keyword.get(opts, :config) do
-      %Config{} = config -> config
-      nil -> Config.new()
-    end
-  end
+  def get_config(opts), do: Keyword.get(opts, :config) || Config.new()
 
   @doc """
   Adds a parameter to a keyword list if the value is not nil.
@@ -75,17 +70,13 @@ defmodule QlikElixir.REST.Helpers do
   """
   @spec build_query(keyword(), list({atom(), atom()})) :: String.t()
   def build_query(opts, param_mappings) do
-    params =
-      []
-      |> add_param(:limit, Keyword.get(opts, :limit))
-      |> add_param(:next, Keyword.get(opts, :next))
+    base_params = [{:limit, :limit}, {:next, :next}]
 
-    params =
-      Enum.reduce(param_mappings, params, fn {api_key, opts_key}, acc ->
-        add_param(acc, api_key, Keyword.get(opts, opts_key))
-      end)
-
-    Pagination.build_query(params)
+    (base_params ++ param_mappings)
+    |> Enum.reduce([], fn {api_key, opts_key}, acc ->
+      add_param(acc, api_key, Keyword.get(opts, opts_key))
+    end)
+    |> Pagination.build_query()
   end
 
   @doc """
@@ -126,24 +117,20 @@ defmodule QlikElixir.REST.Helpers do
   def build_body(params, field_keys) do
     Enum.reduce(field_keys, %{}, fn field_spec, acc ->
       {api_key, param_key} = normalize_field_spec(field_spec)
-
-      value =
-        case Map.fetch(params, param_key) do
-          {:ok, v} -> v
-          :error -> Map.get(params, to_string(param_key))
-        end
-
+      value = fetch_param_value(params, param_key)
       put_if_present(acc, api_key, value)
     end)
   end
 
-  defp normalize_field_spec({api_key, param_key}) when is_binary(api_key) and is_atom(param_key) do
-    {api_key, param_key}
+  defp fetch_param_value(params, key) do
+    case Map.fetch(params, key) do
+      {:ok, value} -> value
+      :error -> Map.get(params, to_string(key))
+    end
   end
 
-  defp normalize_field_spec(key) when is_atom(key) do
-    {to_string(key), key}
-  end
+  defp normalize_field_spec({api_key, param_key}) when is_binary(api_key), do: {api_key, param_key}
+  defp normalize_field_spec(key) when is_atom(key), do: {to_string(key), key}
 
   @doc """
   Normalizes a delete response to `:ok` on success.
@@ -188,4 +175,68 @@ defmodule QlikElixir.REST.Helpers do
   end
 
   def normalize_get_response(error, _resource_name), do: error
+
+  # File validation helpers (shared by Uploader and DataFiles)
+
+  @max_file_size 500 * 1024 * 1024
+
+  @doc """
+  Validates that a file path points to a regular file.
+
+  ## Examples
+
+      iex> QlikElixir.REST.Helpers.validate_file("/path/to/file.csv")
+      {:ok, %File.Stat{}}
+
+      iex> QlikElixir.REST.Helpers.validate_file("/nonexistent")
+      {:error, %Error{type: :file_not_found}}
+
+  """
+  @spec validate_file(String.t()) :: {:ok, File.Stat.t()} | {:error, Error.t()}
+  def validate_file(file_path) do
+    case File.stat(file_path) do
+      {:ok, %{type: :regular} = stat} -> {:ok, stat}
+      {:ok, _} -> {:error, Error.validation_error("#{file_path} is not a regular file")}
+      {:error, :enoent} -> {:error, Error.file_not_found("File not found: #{file_path}")}
+      {:error, reason} -> {:error, Error.validation_error("Cannot access file: #{inspect(reason)}")}
+    end
+  end
+
+  @doc """
+  Validates file size against maximum allowed (500MB).
+  """
+  @spec validate_file_size(non_neg_integer()) :: :ok | {:error, Error.t()}
+  def validate_file_size(size) when size > @max_file_size do
+    {:error,
+     Error.file_too_large(
+       "File size (#{format_bytes(size)}) exceeds maximum allowed size (#{format_bytes(@max_file_size)})"
+     )}
+  end
+
+  def validate_file_size(_size), do: :ok
+
+  @doc """
+  Validates that filename ends with .csv extension.
+  """
+  @spec validate_filename(String.t()) :: :ok | {:error, Error.t()}
+  def validate_filename(filename) when is_binary(filename) do
+    if String.ends_with?(filename, ".csv"),
+      do: :ok,
+      else: {:error, Error.validation_error("Filename must end with .csv extension")}
+  end
+
+  def validate_filename(_), do: {:error, Error.validation_error("Filename must end with .csv extension")}
+
+  @doc """
+  Formats bytes into human readable string (B, KB, MB, GB).
+  """
+  @spec format_bytes(non_neg_integer()) :: String.t()
+  def format_bytes(bytes) do
+    cond do
+      bytes >= 1024 * 1024 * 1024 -> "#{Float.round(bytes / (1024 * 1024 * 1024), 2)} GB"
+      bytes >= 1024 * 1024 -> "#{Float.round(bytes / (1024 * 1024), 2)} MB"
+      bytes >= 1024 -> "#{Float.round(bytes / 1024, 2)} KB"
+      true -> "#{bytes} B"
+    end
+  end
 end

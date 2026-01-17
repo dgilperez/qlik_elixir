@@ -15,14 +15,17 @@ defmodule QlikElixir.REST.RolesTest do
       Bypass.expect_once(bypass, "GET", "/api/v1/roles", fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(200, Jason.encode!(%{
-          "data" => [
-            %{"id" => "role-1", "name" => "TenantAdmin", "type" => "default"},
-            %{"id" => "role-2", "name" => "Developer", "type" => "default"},
-            %{"id" => "role-3", "name" => "Analyzer", "type" => "default"}
-          ],
-          "links" => %{}
-        }))
+        |> Plug.Conn.resp(
+          200,
+          Jason.encode!(%{
+            "data" => [
+              %{"id" => "role-1", "name" => "TenantAdmin", "type" => "default"},
+              %{"id" => "role-2", "name" => "Developer", "type" => "default"},
+              %{"id" => "role-3", "name" => "Analyzer", "type" => "default"}
+            ],
+            "links" => %{}
+          })
+        )
       end)
 
       assert {:ok, %{"data" => roles}} = Roles.list(config: config)
@@ -32,6 +35,7 @@ defmodule QlikElixir.REST.RolesTest do
     test "supports pagination", %{bypass: bypass, config: config} do
       Bypass.expect_once(bypass, "GET", "/api/v1/roles", fn conn ->
         assert conn.query_string =~ "limit=5"
+
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
         |> Plug.Conn.resp(200, Jason.encode!(%{"data" => [], "links" => %{}}))
@@ -43,6 +47,7 @@ defmodule QlikElixir.REST.RolesTest do
     test "supports name filter", %{bypass: bypass, config: config} do
       Bypass.expect_once(bypass, "GET", "/api/v1/roles", fn conn ->
         assert conn.query_string =~ "name=Admin"
+
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
         |> Plug.Conn.resp(200, Jason.encode!(%{"data" => [], "links" => %{}}))
@@ -54,6 +59,7 @@ defmodule QlikElixir.REST.RolesTest do
     test "supports type filter", %{bypass: bypass, config: config} do
       Bypass.expect_once(bypass, "GET", "/api/v1/roles", fn conn ->
         assert conn.query_string =~ "type=default"
+
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
         |> Plug.Conn.resp(200, Jason.encode!(%{"data" => [], "links" => %{}}))
@@ -68,13 +74,16 @@ defmodule QlikElixir.REST.RolesTest do
       Bypass.expect_once(bypass, "GET", "/api/v1/roles/role-123", fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(200, Jason.encode!(%{
-          "id" => "role-123",
-          "name" => "TenantAdmin",
-          "type" => "default",
-          "description" => "Full tenant administration",
-          "permissions" => ["admin:*", "apps:*"]
-        }))
+        |> Plug.Conn.resp(
+          200,
+          Jason.encode!(%{
+            "id" => "role-123",
+            "name" => "TenantAdmin",
+            "type" => "default",
+            "description" => "Full tenant administration",
+            "permissions" => ["admin:*", "apps:*"]
+          })
+        )
       end)
 
       assert {:ok, role} = Roles.get("role-123", config: config)

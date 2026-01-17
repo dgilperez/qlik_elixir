@@ -15,13 +15,16 @@ defmodule QlikElixir.REST.GroupsTest do
       Bypass.expect_once(bypass, "GET", "/api/v1/groups", fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(200, Jason.encode!(%{
-          "data" => [
-            %{"id" => "group-1", "name" => "Developers"},
-            %{"id" => "group-2", "name" => "Analysts"}
-          ],
-          "links" => %{}
-        }))
+        |> Plug.Conn.resp(
+          200,
+          Jason.encode!(%{
+            "data" => [
+              %{"id" => "group-1", "name" => "Developers"},
+              %{"id" => "group-2", "name" => "Analysts"}
+            ],
+            "links" => %{}
+          })
+        )
       end)
 
       assert {:ok, %{"data" => groups}} = Groups.list(config: config)
@@ -31,6 +34,7 @@ defmodule QlikElixir.REST.GroupsTest do
     test "supports pagination", %{bypass: bypass, config: config} do
       Bypass.expect_once(bypass, "GET", "/api/v1/groups", fn conn ->
         assert conn.query_string =~ "limit=10"
+
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
         |> Plug.Conn.resp(200, Jason.encode!(%{"data" => [], "links" => %{}}))
@@ -42,6 +46,7 @@ defmodule QlikElixir.REST.GroupsTest do
     test "supports name filter", %{bypass: bypass, config: config} do
       Bypass.expect_once(bypass, "GET", "/api/v1/groups", fn conn ->
         assert conn.query_string =~ "name=Dev"
+
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
         |> Plug.Conn.resp(200, Jason.encode!(%{"data" => [], "links" => %{}}))
@@ -56,12 +61,15 @@ defmodule QlikElixir.REST.GroupsTest do
       Bypass.expect_once(bypass, "GET", "/api/v1/groups/group-123", fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(200, Jason.encode!(%{
-          "id" => "group-123",
-          "name" => "Developers",
-          "tenantId" => "tenant-abc",
-          "createdAt" => "2024-01-01T00:00:00Z"
-        }))
+        |> Plug.Conn.resp(
+          200,
+          Jason.encode!(%{
+            "id" => "group-123",
+            "name" => "Developers",
+            "tenantId" => "tenant-abc",
+            "createdAt" => "2024-01-01T00:00:00Z"
+          })
+        )
       end)
 
       assert {:ok, group} = Groups.get("group-123", config: config)
@@ -89,10 +97,13 @@ defmodule QlikElixir.REST.GroupsTest do
 
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(201, Jason.encode!(%{
-          "id" => "group-new",
-          "name" => "New Group"
-        }))
+        |> Plug.Conn.resp(
+          201,
+          Jason.encode!(%{
+            "id" => "group-new",
+            "name" => "New Group"
+          })
+        )
       end)
 
       params = %{name: "New Group"}
@@ -110,10 +121,13 @@ defmodule QlikElixir.REST.GroupsTest do
 
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(200, Jason.encode!(%{
-          "id" => "group-123",
-          "name" => "Updated Group"
-        }))
+        |> Plug.Conn.resp(
+          200,
+          Jason.encode!(%{
+            "id" => "group-123",
+            "name" => "Updated Group"
+          })
+        )
       end)
 
       assert {:ok, group} = Groups.update("group-123", %{name: "Updated Group"}, config: config)
@@ -147,10 +161,13 @@ defmodule QlikElixir.REST.GroupsTest do
       Bypass.expect_once(bypass, "GET", "/api/v1/groups/settings", fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(200, Jason.encode!(%{
-          "autoCreateGroups" => true,
-          "syncIdpGroups" => false
-        }))
+        |> Plug.Conn.resp(
+          200,
+          Jason.encode!(%{
+            "autoCreateGroups" => true,
+            "syncIdpGroups" => false
+          })
+        )
       end)
 
       assert {:ok, settings} = Groups.list_settings(config: config)
@@ -167,9 +184,12 @@ defmodule QlikElixir.REST.GroupsTest do
 
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(200, Jason.encode!(%{
-          "autoCreateGroups" => false
-        }))
+        |> Plug.Conn.resp(
+          200,
+          Jason.encode!(%{
+            "autoCreateGroups" => false
+          })
+        )
       end)
 
       assert {:ok, settings} = Groups.update_settings(%{autoCreateGroups: false}, config: config)

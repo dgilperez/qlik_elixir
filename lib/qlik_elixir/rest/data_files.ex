@@ -12,7 +12,6 @@ defmodule QlikElixir.REST.DataFiles do
   alias QlikElixir.REST.Helpers
 
   @base_path "api/v1/data-files"
-  @max_file_size 500 * 1024 * 1024
 
   @doc """
   Lists data files.
@@ -49,7 +48,9 @@ defmodule QlikElixir.REST.DataFiles do
   """
   @spec get(String.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
   def get(file_id, opts \\ []) do
-    Client.get("#{@base_path}/#{file_id}", Helpers.get_config(opts))
+    "#{@base_path}/#{file_id}"
+    |> Client.get(Helpers.get_config(opts))
+    |> Helpers.normalize_get_response("Data file")
   end
 
   @doc """
@@ -71,8 +72,8 @@ defmodule QlikElixir.REST.DataFiles do
   def upload(content, filename, opts \\ []) do
     config = Helpers.get_config(opts)
 
-    with :ok <- validate_file_size(byte_size(content)),
-         :ok <- validate_filename(filename),
+    with :ok <- Helpers.validate_file_size(byte_size(content)),
+         :ok <- Helpers.validate_filename(filename),
          {:ok, validated_config} <- Config.validate(config) do
       perform_upload(content, filename, validated_config, opts)
     end
@@ -95,8 +96,8 @@ defmodule QlikElixir.REST.DataFiles do
   """
   @spec upload_file(String.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
   def upload_file(file_path, opts \\ []) do
-    with {:ok, %{size: size}} <- validate_file(file_path),
-         :ok <- validate_file_size(size),
+    with {:ok, %{size: size}} <- Helpers.validate_file(file_path),
+         :ok <- Helpers.validate_file_size(size),
          {:ok, content} <- File.read(file_path) do
       filename = opts[:name] || Path.basename(file_path)
       upload(content, filename, opts)
@@ -238,15 +239,12 @@ defmodule QlikElixir.REST.DataFiles do
   """
   @spec find_by_name(String.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
   def find_by_name(filename, opts \\ []) do
-    case list(opts) do
-      {:ok, %{"data" => files}} ->
-        case Enum.find(files, &(&1["name"] == filename)) do
-          nil -> {:error, Error.file_not_found("File not found: #{filename}")}
-          file -> {:ok, file}
-        end
-
-      error ->
-        error
+    with {:ok, %{"data" => files}} <- list(opts),
+         file when not is_nil(file) <- Enum.find(files, &(&1["name"] == filename)) do
+      {:ok, file}
+    else
+      nil -> {:error, Error.file_not_found("File not found: #{filename}")}
+      error -> error
     end
   end
 
@@ -268,47 +266,5 @@ defmodule QlikElixir.REST.DataFiles do
       {"Json", {Jason.encode!(json_data), [content_type: "application/json"]}},
       {"File", {content, [filename: filename, content_type: "text/csv"]}}
     ]
-  end
-
-  defp validate_file(file_path) do
-    case File.stat(file_path) do
-      {:ok, %{type: :regular} = stat} ->
-        {:ok, stat}
-
-      {:ok, _stat} ->
-        {:error, Error.validation_error("#{file_path} is not a regular file")}
-
-      {:error, :enoent} ->
-        {:error, Error.file_not_found("File not found: #{file_path}")}
-
-      {:error, reason} ->
-        {:error, Error.validation_error("Cannot access file: #{inspect(reason)}")}
-    end
-  end
-
-  defp validate_file_size(size) when size > @max_file_size do
-    {:error,
-     Error.file_too_large(
-       "File size (#{format_bytes(size)}) exceeds maximum allowed size (#{format_bytes(@max_file_size)})"
-     )}
-  end
-
-  defp validate_file_size(_size), do: :ok
-
-  defp validate_filename(filename) do
-    if String.ends_with?(filename, ".csv") do
-      :ok
-    else
-      {:error, Error.validation_error("Filename must end with .csv extension")}
-    end
-  end
-
-  defp format_bytes(bytes) do
-    cond do
-      bytes >= 1024 * 1024 * 1024 -> "#{Float.round(bytes / (1024 * 1024 * 1024), 2)} GB"
-      bytes >= 1024 * 1024 -> "#{Float.round(bytes / (1024 * 1024), 2)} MB"
-      bytes >= 1024 -> "#{Float.round(bytes / 1024, 2)} KB"
-      true -> "#{bytes} B"
-    end
   end
 end

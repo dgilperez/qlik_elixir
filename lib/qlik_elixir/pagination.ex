@@ -38,9 +38,8 @@ defmodule QlikElixir.Pagination do
   @spec build_query(keyword()) :: String.t()
   def build_query(opts) do
     opts
-    |> Enum.filter(fn {_k, v} -> not is_nil(v) end)
-    |> Enum.map(fn {k, v} -> "#{k}=#{URI.encode_www_form(to_string(v))}" end)
-    |> Enum.join("&")
+    |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+    |> Enum.map_join("&", fn {k, v} -> "#{k}=#{URI.encode_www_form(to_string(v))}" end)
   end
 
   @doc """

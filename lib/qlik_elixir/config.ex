@@ -114,23 +114,19 @@ defmodule QlikElixir.Config do
     Application.get_env(:qlik_elixir, key)
   end
 
-  defp validate_api_key(nil) do
-    {:error, QlikElixir.Error.configuration_error("API key is required")}
-  end
+  defp validate_api_key(nil),
+    do: {:error, QlikElixir.Error.configuration_error("API key is required")}
 
-  defp validate_api_key("") do
-    {:error, QlikElixir.Error.configuration_error("API key cannot be empty")}
-  end
+  defp validate_api_key(""),
+    do: {:error, QlikElixir.Error.configuration_error("API key cannot be empty")}
 
   defp validate_api_key(_), do: :ok
 
-  defp validate_tenant_url(nil) do
-    {:error, QlikElixir.Error.configuration_error("Tenant URL is required")}
-  end
+  defp validate_tenant_url(nil),
+    do: {:error, QlikElixir.Error.configuration_error("Tenant URL is required")}
 
-  defp validate_tenant_url("") do
-    {:error, QlikElixir.Error.configuration_error("Tenant URL cannot be empty")}
-  end
+  defp validate_tenant_url(""),
+    do: {:error, QlikElixir.Error.configuration_error("Tenant URL cannot be empty")}
 
   defp validate_tenant_url(url) do
     case URI.parse(url) do

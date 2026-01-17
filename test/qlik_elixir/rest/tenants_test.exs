@@ -15,13 +15,16 @@ defmodule QlikElixir.REST.TenantsTest do
       Bypass.expect_once(bypass, "GET", "/api/v1/tenants/me", fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(200, Jason.encode!(%{
-          "id" => "tenant-123",
-          "name" => "My Tenant",
-          "hostnames" => ["mytenant.qlikcloud.com"],
-          "createdByUser" => "user-abc",
-          "created" => "2024-01-01T00:00:00Z"
-        }))
+        |> Plug.Conn.resp(
+          200,
+          Jason.encode!(%{
+            "id" => "tenant-123",
+            "name" => "My Tenant",
+            "hostnames" => ["mytenant.qlikcloud.com"],
+            "createdByUser" => "user-abc",
+            "created" => "2024-01-01T00:00:00Z"
+          })
+        )
       end)
 
       assert {:ok, tenant} = Tenants.me(config: config)
@@ -35,12 +38,15 @@ defmodule QlikElixir.REST.TenantsTest do
       Bypass.expect_once(bypass, "GET", "/api/v1/tenants/tenant-123", fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(200, Jason.encode!(%{
-          "id" => "tenant-123",
-          "name" => "Test Tenant",
-          "hostnames" => ["test.qlikcloud.com"],
-          "status" => "active"
-        }))
+        |> Plug.Conn.resp(
+          200,
+          Jason.encode!(%{
+            "id" => "tenant-123",
+            "name" => "Test Tenant",
+            "hostnames" => ["test.qlikcloud.com"],
+            "status" => "active"
+          })
+        )
       end)
 
       assert {:ok, tenant} = Tenants.get("tenant-123", config: config)
@@ -69,11 +75,14 @@ defmodule QlikElixir.REST.TenantsTest do
 
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(201, Jason.encode!(%{
-          "id" => "tenant-new",
-          "name" => "New Tenant",
-          "status" => "active"
-        }))
+        |> Plug.Conn.resp(
+          201,
+          Jason.encode!(%{
+            "id" => "tenant-new",
+            "name" => "New Tenant",
+            "status" => "active"
+          })
+        )
       end)
 
       params = %{name: "New Tenant", licenseKey: "license-key-123"}
@@ -91,10 +100,13 @@ defmodule QlikElixir.REST.TenantsTest do
 
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(200, Jason.encode!(%{
-          "id" => "tenant-123",
-          "name" => "Updated Tenant"
-        }))
+        |> Plug.Conn.resp(
+          200,
+          Jason.encode!(%{
+            "id" => "tenant-123",
+            "name" => "Updated Tenant"
+          })
+        )
       end)
 
       assert {:ok, tenant} = Tenants.update("tenant-123", %{name: "Updated Tenant"}, config: config)
@@ -107,10 +119,13 @@ defmodule QlikElixir.REST.TenantsTest do
       Bypass.expect_once(bypass, "POST", "/api/v1/tenants/tenant-123/actions/deactivate", fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(200, Jason.encode!(%{
-          "id" => "tenant-123",
-          "status" => "disabled"
-        }))
+        |> Plug.Conn.resp(
+          200,
+          Jason.encode!(%{
+            "id" => "tenant-123",
+            "status" => "disabled"
+          })
+        )
       end)
 
       assert {:ok, tenant} = Tenants.deactivate("tenant-123", config: config)
@@ -123,10 +138,13 @@ defmodule QlikElixir.REST.TenantsTest do
       Bypass.expect_once(bypass, "POST", "/api/v1/tenants/tenant-123/actions/reactivate", fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(200, Jason.encode!(%{
-          "id" => "tenant-123",
-          "status" => "active"
-        }))
+        |> Plug.Conn.resp(
+          200,
+          Jason.encode!(%{
+            "id" => "tenant-123",
+            "status" => "active"
+          })
+        )
       end)
 
       assert {:ok, tenant} = Tenants.reactivate("tenant-123", config: config)

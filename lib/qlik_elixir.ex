@@ -54,6 +54,7 @@ defmodule QlikElixir do
   """
 
   alias QlikElixir.{Client, Config, Error, Uploader}
+  alias QlikElixir.REST.Helpers
 
   @doc """
   Uploads a CSV file from a file path.
@@ -128,16 +129,16 @@ defmodule QlikElixir do
   """
   @spec list_files(keyword()) :: {:ok, map()} | {:error, Error.t()}
   def list_files(opts \\ []) do
-    config = get_config(opts)
-    limit = Keyword.get(opts, :limit, 100)
-    offset = Keyword.get(opts, :offset, 0)
-    include_all_spaces = Keyword.get(opts, :includeAllSpaces, false)
+    params =
+      [limit: Keyword.get(opts, :limit, 100), offset: Keyword.get(opts, :offset, 0)]
+      |> add_if(Keyword.get(opts, :includeAllSpaces, false), :includeAllSpaces, true)
 
-    query_params = "limit=#{limit}&offset=#{offset}"
-    query_params = if include_all_spaces, do: "#{query_params}&includeAllSpaces=true", else: query_params
-
-    Client.get("api/v1/data-files?#{query_params}", config)
+    query = QlikElixir.Pagination.build_query(params)
+    Client.get("api/v1/data-files?#{query}", get_config(opts))
   end
+
+  defp add_if(params, true, key, value), do: Keyword.put(params, key, value)
+  defp add_if(params, false, _key, _value), do: params
 
   @doc """
   Deletes a file by ID.
@@ -226,10 +227,6 @@ defmodule QlikElixir do
   """
   defdelegate new_config(opts), to: Config, as: :new
 
-  defp get_config(opts) do
-    case Keyword.get(opts, :config) do
-      %Config{} = config -> config
-      nil -> Config.new()
-    end
-  end
+  # Delegate to shared helper to avoid duplication
+  defp get_config(opts), do: Helpers.get_config(opts)
 end

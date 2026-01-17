@@ -51,13 +51,13 @@ defmodule QlikElixir.QIX.ProtocolTest do
           jsonrpc: "2.0",
           id: 1,
           error: %{
-            code: -32602,
+            code: -32_602,
             message: "Invalid params",
             parameter: "qDocName"
           }
         })
 
-      assert {:error, %{id: 1, code: -32602, message: "Invalid params"}} = Protocol.decode_response(json)
+      assert {:error, %{id: 1, code: -32_602, message: "Invalid params"}} = Protocol.decode_response(json)
     end
 
     test "handles malformed JSON" do

@@ -386,7 +386,7 @@ defmodule QlikElixir.REST.AutomationsTest do
           Jason.encode!(%{
             runCount: 150,
             errorCount: 5,
-            executionTimeMs: 45000
+            executionTimeMs: 45_000
           })
         )
       end)

@@ -48,7 +48,9 @@ defmodule QlikElixir.REST.Reloads do
   """
   @spec get(String.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
   def get(reload_id, opts \\ []) do
-    Client.get("#{@base_path}/#{reload_id}", Helpers.get_config(opts))
+    "#{@base_path}/#{reload_id}"
+    |> Client.get(Helpers.get_config(opts))
+    |> Helpers.normalize_get_response("Reload")
   end
 
   @doc """
@@ -88,15 +90,8 @@ defmodule QlikElixir.REST.Reloads do
     Client.post("#{@base_path}/#{reload_id}/actions/cancel", %{}, Helpers.get_config(opts))
   end
 
-  # Private helpers
-
   defp build_create_body(app_id, opts) do
-    body = %{"appId" => app_id}
-
-    if opts[:partial] == true do
-      Map.put(body, "partial", true)
-    else
-      body
-    end
+    %{"appId" => app_id}
+    |> Helpers.put_if_present("partial", opts[:partial])
   end
 end

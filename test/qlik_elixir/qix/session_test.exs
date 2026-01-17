@@ -1,8 +1,8 @@
 defmodule QlikElixir.QIX.SessionTest do
   use ExUnit.Case, async: true
 
-  alias QlikElixir.QIX.Session
   alias QlikElixir.Config
+  alias QlikElixir.QIX.Session
 
   describe "connect/2" do
     test "returns error when no config provided" do
@@ -47,13 +47,15 @@ defmodule QlikElixir.QIX.SessionTest do
 
     test "decode_response parses successful response" do
       json = ~s({"jsonrpc":"2.0","id":1,"result":{"qReturn":{"qHandle":1}}})
+
       assert {:ok, %{id: 1, result: %{"qReturn" => %{"qHandle" => 1}}}} =
                QlikElixir.QIX.Protocol.decode_response(json)
     end
 
     test "decode_response parses error response" do
       json = ~s({"jsonrpc":"2.0","id":1,"error":{"code":-32602,"message":"Invalid params"}})
-      assert {:error, %{id: 1, code: -32602, message: "Invalid params"}} =
+
+      assert {:error, %{id: 1, code: -32_602, message: "Invalid params"}} =
                QlikElixir.QIX.Protocol.decode_response(json)
     end
   end

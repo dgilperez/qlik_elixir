@@ -49,7 +49,9 @@ defmodule QlikElixir.REST.Apps do
   """
   @spec get(String.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
   def get(app_id, opts \\ []) do
-    Client.get("#{@base_path}/#{app_id}", Helpers.get_config(opts))
+    "#{@base_path}/#{app_id}"
+    |> Client.get(Helpers.get_config(opts))
+    |> Helpers.normalize_get_response("App")
   end
 
   @doc """

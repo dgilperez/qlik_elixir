@@ -20,19 +20,16 @@ defmodule QlikElixir.Client do
   Makes a POST request to the Qlik API.
   """
   @spec post(String.t(), map() | {:multipart, list()}, Config.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
-  def post(path, body, config, opts \\ []) do
-    url = build_url(config, path)
+  def post(path, body, config, opts \\ [])
 
-    case body do
-      {:multipart, _parts} ->
-        # For multipart, don't set Content-Type header (Req will set it with boundary)
-        headers = [{"Authorization", "Bearer #{config.api_key}"}]
-        request(:post, url, headers, body, config, opts)
+  def post(path, {:multipart, _} = body, config, opts) do
+    # For multipart, don't set Content-Type header (Req will set it with boundary)
+    headers = [{"Authorization", "Bearer #{config.api_key}"}]
+    request(:post, build_url(config, path), headers, body, config, opts)
+  end
 
-      _ ->
-        headers = Config.headers(config)
-        request(:post, url, headers, body, config, opts)
-    end
+  def post(path, body, config, opts) do
+    request(:post, build_url(config, path), Config.headers(config), body, config, opts)
   end
 
   @doc """

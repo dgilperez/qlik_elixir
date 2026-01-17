@@ -1,17 +1,32 @@
 # Comprehensive Qlik Cloud Exploration Script
-# Run with: export $(grep -v '^#' ~/src/qlik-mcp/.env | sed 's/"//g' | xargs) && mix run explore_qlik.exs
+#
+# Setup:
+#   1. Copy .env.example to .env
+#   2. Fill in your Qlik Cloud credentials and IDs
+#   3. Run: export $(grep -v '^#' .env | sed 's/"//g' | xargs) && mix run explore_qlik.exs
+#
+# Required environment variables:
+#   QLIK_API_KEY      - Your Qlik Cloud API key
+#   QLIK_BASE_URL     - Your tenant URL (e.g., https://tenant.region.qlikcloud.com)
+#   QLIK_TARGET_APP_ID   - App ID to explore
+#   QLIK_TARGET_SPACE_ID - Space ID to explore
+#
+# Optional:
+#   QLIK_TEST_FILENAME - Filename to search for (default: test.qvd)
 
 alias QlikElixir.{Config, Error}
 alias QlikElixir.REST.{Apps, Spaces, Reloads, DataFiles, Users, ApiKeys, Automations, Webhooks, DataConnections}
 alias QlikElixir.REST.{Tenants, Groups, Roles, Audits}
+alias QlikElixir.REST.{Items, Collections, Reports, NaturalLanguage}
 
-# Configuration
+# Configuration - all from environment variables
 api_key = System.get_env("QLIK_API_KEY") || raise "QLIK_API_KEY not set"
-base_url = System.get_env("QLIK_BASE_URL") || "https://balneario.eu.qlikcloud.com"
+base_url = System.get_env("QLIK_BASE_URL") || raise "QLIK_BASE_URL not set"
 
-# Target app: Marketing y Ocupación
-target_app_id = "4fec2450-1b04-43a1-815f-8c651eef9ecd"
-target_space_id = "633462b18a97a48dabc1fb4d"  # Marketing space
+# Target app and space from environment
+target_app_id = System.get_env("QLIK_TARGET_APP_ID") || raise "QLIK_TARGET_APP_ID not set"
+target_space_id = System.get_env("QLIK_TARGET_SPACE_ID") || raise "QLIK_TARGET_SPACE_ID not set"
+test_filename = System.get_env("QLIK_TEST_FILENAME") || "test.qvd"
 
 config = Config.new(api_key: api_key, tenant_url: base_url)
 
@@ -33,8 +48,8 @@ end
 
 Explorer.header("QLIK CLOUD COMPREHENSIVE EXPLORATION")
 IO.puts("Tenant: #{base_url}")
-IO.puts("Target App: Marketing y Ocupación (#{target_app_id})")
-IO.puts("Expected: 7 sheets, 41 tables")
+IO.puts("Target App ID: #{target_app_id}")
+IO.puts("Target Space ID: #{target_space_id}")
 
 # =============================================================================
 # SECTION 1: APPS API - Deep Exploration
@@ -75,10 +90,10 @@ all_apps =
 Explorer.success("Total apps found: #{length(all_apps)}")
 
 # 1.2 Filter apps by space
-Explorer.subheader("1.2 Apps in Marketing Space")
+Explorer.subheader("1.2 Apps in Target Space")
 case Apps.list(config: config, space_id: target_space_id) do
   {:ok, %{"data" => apps}} ->
-    Explorer.success("Found #{length(apps)} apps in Marketing space:")
+    Explorer.success("Found #{length(apps)} apps in target space:")
     Enum.each(apps, fn app ->
       attrs = app["attributes"]
       Explorer.info("#{attrs["name"]} - Last reload: #{attrs["lastReloadTime"]}")
@@ -154,7 +169,7 @@ end
 
 # 1.6 Search apps by name
 Explorer.subheader("1.6 Search Apps by Name")
-search_terms = ["Marketing", "Ocupación", "ETL", "Desarrollo"]
+search_terms = ["Sales", "Dashboard", "ETL", "Report"]
 Enum.each(search_terms, fn term ->
   case Apps.list(config: config, name: term) do
     {:ok, %{"data" => apps}} ->
@@ -198,8 +213,8 @@ Explorer.subheader("2.2 Filter Spaces by Type")
   end
 end)
 
-# 2.3 Get Marketing space details
-Explorer.subheader("2.3 Marketing Space Details")
+# 2.3 Get target space details
+Explorer.subheader("2.3 Target Space Details")
 case Spaces.get(target_space_id, config: config) do
   {:ok, space} ->
     Explorer.success("Space: #{space["name"]}")
@@ -215,7 +230,7 @@ case Spaces.get(target_space_id, config: config) do
 end
 
 # 2.4 List space assignments (who has access)
-Explorer.subheader("2.4 Marketing Space Assignments")
+Explorer.subheader("2.4 Target Space Assignments")
 case Spaces.list_assignments(target_space_id, config: config) do
   {:ok, %{"data" => assignments}} ->
     Explorer.success("Found #{length(assignments)} assignments")
@@ -283,7 +298,7 @@ end)
 Explorer.subheader("3.3 Target App Reload History")
 case Reloads.list(config: config, app_id: target_app_id, limit: 10) do
   {:ok, %{"data" => reloads}} ->
-    Explorer.success("Found #{length(reloads)} reloads for Marketing y Ocupación")
+    Explorer.success("Found #{length(reloads)} reloads for target app")
     Enum.each(reloads, fn r ->
       duration = r["duration"] || "N/A"
       Explorer.info("#{r["status"]} | #{r["endTime"] || r["creationTime"]} | Duration: #{duration}")
@@ -392,7 +407,7 @@ end
 
 # 4.5 Find file by name
 Explorer.subheader("4.5 Search Files by Name")
-case DataFiles.find_by_name("test_david_DepartmentObjectives.qvd", config: config) do
+case DataFiles.find_by_name(test_filename, config: config) do
   {:ok, file} ->
     Explorer.success("Found: #{file["name"]} (#{file["id"]})")
   {:error, %Error{type: :file_not_found}} ->
@@ -652,10 +667,10 @@ case DataConnections.list(config: config, limit: 1) do
 end
 
 # 9.3 Connections by space
-Explorer.subheader("9.3 Data Connections in Marketing Space")
+Explorer.subheader("9.3 Data Connections in Target Space")
 case DataConnections.list(config: config, space_id: target_space_id) do
   {:ok, %{"data" => connections}} ->
-    Explorer.success("Found #{length(connections)} connections in Marketing space")
+    Explorer.success("Found #{length(connections)} connections in target space")
     Enum.each(connections, fn c ->
       Explorer.info("#{c["qName"]} (#{c["qType"]})")
     end)
@@ -824,12 +839,266 @@ case Audits.get_settings(config: config) do
 end
 
 # =============================================================================
-# SECTION 14: CROSS-API ANALYSIS
+# SECTION 14: ITEMS API (Unified Resources) - Phase 4
 # =============================================================================
-Explorer.header("SECTION 14: CROSS-API ANALYSIS")
+Explorer.header("SECTION 14: ITEMS API (Unified Resources)")
 
-# 14.1 Apps per space
-Explorer.subheader("14.1 Apps Distribution by Space")
+# 14.1 List all items
+Explorer.subheader("14.1 List All Items")
+case Items.list(config: config, limit: 20) do
+  {:ok, %{"data" => items}} ->
+    Explorer.success("Found #{length(items)} items")
+
+    # Group by resource type
+    by_type = Enum.group_by(items, & &1["resourceType"])
+    Enum.each(by_type, fn {type, list} ->
+      Explorer.info("#{type}: #{length(list)}")
+    end)
+  {:error, err} ->
+    Explorer.error(inspect(err))
+end
+
+# 14.2 Filter by resource type
+Explorer.subheader("14.2 Items by Resource Type")
+["app", "space", "genericlink", "datafile"] |> Enum.each(fn type ->
+  case Items.list(config: config, resource_type: type, limit: 5) do
+    {:ok, %{"data" => items}} ->
+      Explorer.info("#{type}: #{length(items)} items")
+    {:error, _} ->
+      Explorer.info("#{type}: query failed")
+  end
+end)
+
+# 14.3 Item details
+Explorer.subheader("14.3 Item Details")
+case Items.list(config: config, limit: 1) do
+  {:ok, %{"data" => [item | _]}} ->
+    case Items.get(item["id"], config: config) do
+      {:ok, details} ->
+        Explorer.success("Item: #{details["name"]}")
+        Explorer.info("ID: #{details["id"]}")
+        Explorer.info("Resource Type: #{details["resourceType"]}")
+        Explorer.info("Resource ID: #{details["resourceId"]}")
+        Explorer.info("Owner ID: #{details["ownerId"]}")
+        Explorer.info("Space ID: #{details["spaceId"]}")
+        Explorer.info("Created: #{details["createdAt"]}")
+        Explorer.info("Updated: #{details["updatedAt"]}")
+      {:error, err} ->
+        Explorer.error(inspect(err))
+    end
+  {:ok, _} ->
+    Explorer.info("No items found")
+  {:error, err} ->
+    Explorer.error(inspect(err))
+end
+
+# 14.4 Collections for an item
+Explorer.subheader("14.4 Collections Containing Item")
+case Items.list(config: config, resource_type: "app", limit: 1) do
+  {:ok, %{"data" => [item | _]}} ->
+    case Items.get_collections(item["id"], config: config) do
+      {:ok, %{"data" => collections}} ->
+        Explorer.success("Item '#{item["name"]}' is in #{length(collections)} collections")
+      {:ok, _} ->
+        Explorer.info("No collections for this item")
+      {:error, err} ->
+        Explorer.error(inspect(err))
+    end
+  {:ok, _} ->
+    Explorer.info("No items to check")
+  {:error, err} ->
+    Explorer.error(inspect(err))
+end
+
+# =============================================================================
+# SECTION 15: COLLECTIONS API - Phase 4
+# =============================================================================
+Explorer.header("SECTION 15: COLLECTIONS API")
+
+# 15.1 List all collections
+Explorer.subheader("15.1 List All Collections")
+case Collections.list(config: config, limit: 20) do
+  {:ok, %{"data" => collections}} ->
+    Explorer.success("Found #{length(collections)} collections")
+
+    # Group by type
+    by_type = Enum.group_by(collections, & &1["type"])
+    Enum.each(by_type, fn {type, list} ->
+      Explorer.info("#{type}: #{length(list)}")
+    end)
+
+    IO.puts("\n  Collections:")
+    Enum.take(collections, 5) |> Enum.each(fn c ->
+      Explorer.info("#{c["name"]} (#{c["type"]}) - #{c["itemCount"] || 0} items")
+    end)
+  {:error, err} ->
+    Explorer.error(inspect(err))
+end
+
+# 15.2 Favorites collection
+Explorer.subheader("15.2 Favorites Collection")
+case Collections.get_favorites(config: config) do
+  {:ok, favorites} ->
+    Explorer.success("Favorites collection:")
+    Explorer.info("ID: #{favorites["id"]}")
+    Explorer.info("Name: #{favorites["name"]}")
+    Explorer.info("Item count: #{favorites["itemCount"] || 0}")
+  {:error, err} ->
+    Explorer.error(inspect(err))
+end
+
+# 15.3 Collection details and items
+Explorer.subheader("15.3 Collection Details")
+case Collections.list(config: config, limit: 1) do
+  {:ok, %{"data" => [coll | _]}} ->
+    case Collections.get(coll["id"], config: config) do
+      {:ok, details} ->
+        Explorer.success("Collection: #{details["name"]}")
+        Explorer.info("ID: #{details["id"]}")
+        Explorer.info("Type: #{details["type"]}")
+        Explorer.info("Description: #{details["description"] || "(none)"}")
+        Explorer.info("Item count: #{details["itemCount"] || 0}")
+        Explorer.info("Owner ID: #{details["ownerId"]}")
+      {:error, err} ->
+        Explorer.error(inspect(err))
+    end
+
+    case Collections.list_items(coll["id"], config: config, limit: 5) do
+      {:ok, %{"data" => items}} ->
+        Explorer.info("Items in collection: #{length(items)}")
+        Enum.each(items, fn item ->
+          Explorer.info("  - #{item["name"]} (#{item["resourceType"]})")
+        end)
+      {:error, err} ->
+        Explorer.error(inspect(err))
+    end
+  {:ok, _} ->
+    Explorer.info("No collections to inspect")
+  {:error, err} ->
+    Explorer.error(inspect(err))
+end
+
+# =============================================================================
+# SECTION 16: REPORTS API - Phase 4
+# =============================================================================
+Explorer.header("SECTION 16: REPORTS API")
+
+# 16.1 List all reports
+Explorer.subheader("16.1 List All Reports")
+case Reports.list(config: config, limit: 20) do
+  {:ok, %{"data" => reports}} ->
+    Explorer.success("Found #{length(reports)} reports")
+
+    # Group by status
+    by_status = Enum.group_by(reports, & &1["status"])
+    Enum.each(by_status, fn {status, list} ->
+      Explorer.info("#{status}: #{length(list)}")
+    end)
+  {:error, err} ->
+    Explorer.error(inspect(err))
+end
+
+# 16.2 Report details
+Explorer.subheader("16.2 Report Details")
+case Reports.list(config: config, limit: 1) do
+  {:ok, %{"data" => [report | _]}} ->
+    case Reports.get(report["id"], config: config) do
+      {:ok, details} ->
+        Explorer.success("Report: #{details["name"] || details["id"]}")
+        Explorer.info("ID: #{details["id"]}")
+        Explorer.info("Status: #{details["status"]}")
+        Explorer.info("App ID: #{details["appId"]}")
+        Explorer.info("Type: #{details["type"]}")
+        Explorer.info("Created: #{details["createdAt"]}")
+      {:error, err} ->
+        Explorer.error(inspect(err))
+    end
+  {:ok, _} ->
+    Explorer.info("No reports found")
+  {:error, err} ->
+    Explorer.error(inspect(err))
+end
+
+# 16.3 Reports for target app
+Explorer.subheader("16.3 Reports for Target App")
+case Reports.list(config: config, app_id: target_app_id, limit: 10) do
+  {:ok, %{"data" => reports}} ->
+    Explorer.success("Found #{length(reports)} reports for target app")
+    Enum.each(reports, fn r ->
+      Explorer.info("#{r["status"]} | #{r["type"]} | #{r["createdAt"]}")
+    end)
+  {:error, err} ->
+    Explorer.error(inspect(err))
+end
+
+# =============================================================================
+# SECTION 17: NATURAL LANGUAGE API - Phase 4
+# =============================================================================
+Explorer.header("SECTION 17: NATURAL LANGUAGE API (Insight Advisor)")
+
+# 17.1 Get NL fields for target app
+Explorer.subheader("17.1 Available Fields for NL Queries")
+case NaturalLanguage.get_fields(target_app_id, config: config) do
+  {:ok, %{"fields" => fields}} ->
+    Explorer.success("Found #{length(fields)} fields available for NL queries")
+
+    # Group by type
+    by_type = Enum.group_by(fields, & &1["type"])
+    Enum.each(by_type, fn {type, list} ->
+      Explorer.info("#{type}: #{length(list)} fields")
+    end)
+
+    IO.puts("\n  Sample fields:")
+    Enum.take(fields, 10) |> Enum.each(fn f ->
+      tags = (f["tags"] || []) |> Enum.join(", ")
+      Explorer.info("#{f["name"]} (#{f["type"]}) - [#{tags}]")
+    end)
+  {:ok, response} ->
+    Explorer.info("Response: #{inspect(response)}")
+  {:error, err} ->
+    Explorer.error(inspect(err))
+end
+
+# 17.2 Get NL model status
+Explorer.subheader("17.2 NL Model Status")
+case NaturalLanguage.get_model(target_app_id, config: config) do
+  {:ok, model} ->
+    Explorer.success("NL Model status:")
+    Explorer.info("Status: #{model["status"]}")
+    Explorer.info("Last updated: #{model["lastUpdated"]}")
+    Explorer.info("Languages: #{inspect(model["languages"])}")
+    if model["vocabulary"] do
+      Explorer.info("Vocabulary terms: #{model["vocabulary"]["terms"]}")
+      Explorer.info("Synonyms: #{model["vocabulary"]["synonyms"]}")
+    end
+  {:error, err} ->
+    Explorer.error(inspect(err))
+end
+
+# 17.3 Get recommendations
+Explorer.subheader("17.3 Analysis Recommendations")
+case NaturalLanguage.get_recommendations(target_app_id, config: config) do
+  {:ok, %{"recommendations" => recs}} ->
+    Explorer.success("Found #{length(recs)} analysis recommendations")
+    Enum.take(recs, 5) |> Enum.each(fn r ->
+      fields = (r["fields"] || []) |> Enum.join(", ")
+      Explorer.info("#{r["text"]} - Fields: [#{fields}]")
+    end)
+  {:ok, response} ->
+    Explorer.info("Response: #{inspect(response)}")
+  {:error, err} ->
+    Explorer.error(inspect(err))
+end
+
+# Note: Not calling NaturalLanguage.ask() to avoid potentially heavy compute
+
+# =============================================================================
+# SECTION 18: CROSS-API ANALYSIS
+# =============================================================================
+Explorer.header("SECTION 18: CROSS-API ANALYSIS")
+
+# 18.1 Apps per space
+Explorer.subheader("18.1 Apps Distribution by Space")
 case Spaces.list(config: config, limit: 100) do
   {:ok, %{"data" => spaces}} ->
     Enum.each(Enum.take(spaces, 10), fn space ->
@@ -844,8 +1113,8 @@ case Spaces.list(config: config, limit: 100) do
     Explorer.error(inspect(err))
 end
 
-# 14.2 Reload success rate
-Explorer.subheader("14.2 Reload Success Rate (Last 50)")
+# 18.2 Reload success rate
+Explorer.subheader("18.2 Reload Success Rate (Last 50)")
 case Reloads.list(config: config, limit: 50) do
   {:ok, %{"data" => reloads}} ->
     total = length(reloads)
@@ -935,6 +1204,31 @@ PHASE 3 APIs (Governance & Admin):
     - list_sources (audit sources)
     - list_types (event types)
     - get_settings (audit settings)
+
+PHASE 4 APIs (Content & Advanced):
+  ITEMS API (Unified Resources):
+    - list (with resource_type, space_id, name filters)
+    - get (item details)
+    - get_collections (collections containing item)
+    - get_published_items
+
+  COLLECTIONS API:
+    - list (with name, type, sort filters)
+    - get (collection details)
+    - get_favorites (favorites collection)
+    - list_items (items in collection)
+
+  REPORTS API:
+    - list (with app_id, status filters)
+    - get (report details)
+    - download (get download URL)
+    - get_status (report generation status)
+
+  NATURAL LANGUAGE API (Insight Advisor):
+    - get_fields (available fields for NL)
+    - get_model (NL model status)
+    - get_recommendations (analysis recommendations)
+    - ask (natural language queries)
 
 QIX ENGINE:
   - Session management (WebSocket via gun)

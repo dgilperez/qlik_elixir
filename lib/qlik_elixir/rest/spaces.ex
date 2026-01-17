@@ -48,7 +48,9 @@ defmodule QlikElixir.REST.Spaces do
   """
   @spec get(String.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
   def get(space_id, opts \\ []) do
-    Client.get("#{@base_path}/#{space_id}", Helpers.get_config(opts))
+    "#{@base_path}/#{space_id}"
+    |> Client.get(Helpers.get_config(opts))
+    |> Helpers.normalize_get_response("Space")
   end
 
   @doc """

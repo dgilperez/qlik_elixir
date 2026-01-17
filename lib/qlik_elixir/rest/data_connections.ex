@@ -126,8 +126,8 @@ defmodule QlikElixir.REST.DataConnections do
 
     body =
       %{}
-      |> Helpers.put_if_present(:qName, Keyword.get(opts, :name))
-      |> Helpers.put_if_present(:spaceId, Keyword.get(opts, :space_id))
+      |> Helpers.put_if_present("qName", opts[:name])
+      |> Helpers.put_if_present("spaceId", opts[:space_id])
 
     Client.post(path, body, Helpers.get_config(opts))
   end

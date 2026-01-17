@@ -102,7 +102,7 @@ defmodule QlikElixir.REST.ReloadsTest do
         |> Plug.Conn.resp(404, Jason.encode!(%{message: "Not found"}))
       end)
 
-      assert {:error, %Error{type: :file_not_found}} = Reloads.get("missing", config: config)
+      assert {:error, %Error{type: :not_found}} = Reloads.get("missing", config: config)
     end
   end
 

@@ -134,6 +134,7 @@ defmodule QlikElixir.REST.WebhooksTest do
         url: "https://example.com/new",
         eventTypes: ["com.qlik.v1.app.created"]
       }
+
       assert {:ok, webhook} = Webhooks.create(params, config: config)
       assert webhook["id"] == "new-hook"
     end
