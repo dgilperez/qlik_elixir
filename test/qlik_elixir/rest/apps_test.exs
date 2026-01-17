@@ -233,4 +233,154 @@ defmodule QlikElixir.REST.AppsTest do
       assert lineage["data"]
     end
   end
+
+  describe "publish/3" do
+    test "publishes an app to a managed space", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "POST", "/api/v1/apps/app-123/publish", fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        params = Jason.decode!(body)
+        assert params["spaceId"] == "space-456"
+
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(
+          200,
+          Jason.encode!(%{
+            id: "published-app-id",
+            name: "Sales Dashboard"
+          })
+        )
+      end)
+
+      assert {:ok, app} = Apps.publish("app-123", "space-456", config: config)
+      assert app["id"] == "published-app-id"
+    end
+  end
+
+  describe "export/2" do
+    test "exports an app as binary", %{bypass: bypass, config: config} do
+      qvf_content = <<0x00, 0x01, 0x02, 0x03>>
+
+      Bypass.expect_once(bypass, "POST", "/api/v1/apps/app-123/export", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/octet-stream")
+        |> Plug.Conn.resp(200, qvf_content)
+      end)
+
+      assert {:ok, binary} = Apps.export("app-123", config: config)
+      assert is_binary(binary)
+    end
+  end
+
+  describe "import_app/2" do
+    test "imports an app from binary", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "POST", "/api/v1/apps/import", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(
+          201,
+          Jason.encode!(%{
+            id: "imported-app-id",
+            name: "Imported App"
+          })
+        )
+      end)
+
+      assert {:ok, app} = Apps.import_app(<<0x00, 0x01>>, config: config)
+      assert app["id"] == "imported-app-id"
+    end
+
+    test "imports app with custom name", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "POST", "/api/v1/apps/import", fn conn ->
+        assert conn.query_string =~ "name=My+Custom+App"
+
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(201, Jason.encode!(%{id: "new-id"}))
+      end)
+
+      assert {:ok, _} = Apps.import_app(<<0x00>>, name: "My Custom App", config: config)
+    end
+  end
+
+  describe "get_script/2" do
+    test "returns load script", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "GET", "/api/v1/apps/app-123/script", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(
+          200,
+          Jason.encode!(%{
+            script: "SET ThousandSep=',';\nLOAD * FROM data.csv;"
+          })
+        )
+      end)
+
+      assert {:ok, result} = Apps.get_script("app-123", config: config)
+      assert result["script"] =~ "LOAD"
+    end
+  end
+
+  describe "validate_script/2" do
+    test "validates a load script", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "POST", "/api/v1/apps/validatescript", fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        params = Jason.decode!(body)
+        assert params["script"] =~ "LOAD"
+
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, Jason.encode!(%{valid: true, errors: []}))
+      end)
+
+      assert {:ok, result} = Apps.validate_script("LOAD * FROM data.csv;", config: config)
+      assert result["valid"] == true
+    end
+  end
+
+  describe "list_media/3" do
+    test "lists media files in app", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "GET", "/api/v1/apps/app-123/media/list", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(
+          200,
+          Jason.encode!(%{
+            data: [
+              %{name: "logo.png", type: "image/png"},
+              %{name: "background.jpg", type: "image/jpeg"}
+            ]
+          })
+        )
+      end)
+
+      assert {:ok, result} = Apps.list_media("app-123", config: config)
+      assert length(result["data"]) == 2
+    end
+
+    test "lists media at specific path", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "GET", "/api/v1/apps/app-123/media/list/images", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, Jason.encode!(%{data: []}))
+      end)
+
+      assert {:ok, _} = Apps.list_media("app-123", path: "images", config: config)
+    end
+  end
+
+  describe "get_thumbnail/2" do
+    test "returns app thumbnail", %{bypass: bypass, config: config} do
+      thumbnail_binary = <<0xFF, 0xD8, 0xFF, 0xE0>>
+
+      Bypass.expect_once(bypass, "GET", "/api/v1/apps/app-123/media/thumbnail", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("image/png")
+        |> Plug.Conn.resp(200, thumbnail_binary)
+      end)
+
+      assert {:ok, binary} = Apps.get_thumbnail("app-123", config: config)
+      assert is_binary(binary)
+    end
+  end
 end

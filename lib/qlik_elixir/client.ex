@@ -33,6 +33,17 @@ defmodule QlikElixir.Client do
   end
 
   @doc """
+  Makes a POST request with binary content.
+  """
+  @spec post_binary(String.t(), binary(), String.t(), Config.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
+  def post_binary(path, binary, content_type, config, opts \\ []) do
+    url = build_url(config, path)
+    headers = [{"Authorization", "Bearer #{config.api_key}"}, {"Content-Type", content_type}]
+
+    request(:post, url, headers, binary, config, opts)
+  end
+
+  @doc """
   Makes a PUT request to the Qlik API.
   """
   @spec put(String.t(), map(), Config.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}

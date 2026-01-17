@@ -3,9 +3,40 @@ defmodule QlikElixir.REST.Apps do
   Qlik Cloud Apps REST API client.
 
   Provides functions to manage Qlik Sense applications including
-  listing, creating, updating, copying, and deleting apps.
+  listing, creating, updating, copying, publishing, and exporting apps.
 
-  API Reference: https://qlik.dev/apis/rest/apps/
+  ## API Reference
+
+  [Qlik Apps API Documentation](https://qlik.dev/apis/rest/apps/)
+
+  ## Features
+
+  - **CRUD Operations**: List, get, create, update, delete apps
+  - **Publishing**: Publish apps to managed spaces
+  - **Export/Import**: Export apps as .qvf files and import from binary
+  - **Scripts**: Get and validate load scripts
+  - **Media**: List media files and get thumbnails
+  - **Metadata**: Get app lineage and metadata
+
+  ## Examples
+
+      # List apps
+      {:ok, %{"data" => apps}} = QlikElixir.REST.Apps.list(limit: 50)
+
+      # Get app details
+      {:ok, app} = QlikElixir.REST.Apps.get("app-id")
+
+      # Publish to managed space
+      {:ok, published} = QlikElixir.REST.Apps.publish("app-id", "space-id")
+
+      # Export as .qvf
+      {:ok, binary} = QlikElixir.REST.Apps.export("app-id")
+
+  ## Related Modules
+
+  - `QlikElixir.REST.Spaces` - Manage spaces where apps live
+  - `QlikElixir.REST.Reloads` - Trigger app data reloads
+  - `QlikElixir.QIX.App` - Extract data from app visualizations
   """
 
   alias QlikElixir.{Client, Error}
@@ -159,6 +190,131 @@ defmodule QlikElixir.REST.Apps do
   @spec get_lineage(String.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
   def get_lineage(app_id, opts \\ []) do
     Client.get("#{@base_path}/#{app_id}/data/lineage", Helpers.get_config(opts))
+  end
+
+  @doc """
+  Publishes an app to a managed space.
+
+  ## Examples
+
+      iex> QlikElixir.REST.Apps.publish("app-123", "space-456")
+      {:ok, %{"id" => "published-app-id"}}
+
+  """
+  @spec publish(String.t(), String.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
+  def publish(app_id, space_id, opts \\ []) do
+    Client.post("#{@base_path}/#{app_id}/publish", %{"spaceId" => space_id}, Helpers.get_config(opts))
+  end
+
+  @doc """
+  Exports an app as a .qvf binary file.
+
+  ## Examples
+
+      iex> QlikElixir.REST.Apps.export("app-123")
+      {:ok, <<binary>>}
+
+  """
+  @spec export(String.t(), keyword()) :: {:ok, binary()} | {:error, Error.t()}
+  def export(app_id, opts \\ []) do
+    Client.post("#{@base_path}/#{app_id}/export", %{}, Helpers.get_config(opts))
+  end
+
+  @doc """
+  Imports an app from a .qvf binary file.
+
+  ## Options
+
+    * `:name` - Custom name for the imported app
+    * `:space_id` - Target space for the imported app
+    * `:config` - Custom configuration
+
+  ## Examples
+
+      iex> QlikElixir.REST.Apps.import_app(binary_data, name: "My App")
+      {:ok, %{"id" => "new-app-id"}}
+
+  """
+  @spec import_app(binary(), keyword()) :: {:ok, map()} | {:error, Error.t()}
+  def import_app(binary, opts \\ []) do
+    query = Helpers.build_query(opts, [{:name, :name}, {:spaceId, :space_id}])
+    path = Helpers.build_path("#{@base_path}/import", query)
+
+    Client.post_binary(path, binary, "application/octet-stream", Helpers.get_config(opts))
+  end
+
+  @doc """
+  Gets the load script of an app.
+
+  ## Examples
+
+      iex> QlikElixir.REST.Apps.get_script("app-123")
+      {:ok, %{"script" => "LOAD * FROM ..."}}
+
+  """
+  @spec get_script(String.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
+  def get_script(app_id, opts \\ []) do
+    Client.get("#{@base_path}/#{app_id}/script", Helpers.get_config(opts))
+  end
+
+  @doc """
+  Validates a Qlik load script without executing it.
+
+  ## Parameters
+
+    * `script` - The load script to validate
+
+  ## Examples
+
+      iex> QlikElixir.REST.Apps.validate_script("LOAD * FROM data.csv;")
+      {:ok, %{"valid" => true}}
+
+  """
+  @spec validate_script(String.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
+  def validate_script(script, opts \\ []) do
+    Client.post("#{@base_path}/validatescript", %{"script" => script}, Helpers.get_config(opts))
+  end
+
+  @doc """
+  Lists media files in an app.
+
+  ## Options
+
+    * `:path` - Optional path within the media folder
+    * `:config` - Custom configuration
+
+  ## Examples
+
+      iex> QlikElixir.REST.Apps.list_media("app-123")
+      {:ok, %{"data" => [...]}}
+
+      iex> QlikElixir.REST.Apps.list_media("app-123", path: "images")
+      {:ok, %{"data" => [...]}}
+
+  """
+  @spec list_media(String.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
+  def list_media(app_id, opts \\ []) do
+    path =
+      case opts[:path] do
+        nil -> "#{@base_path}/#{app_id}/media/list"
+        subpath -> "#{@base_path}/#{app_id}/media/list/#{subpath}"
+      end
+
+    Client.get(path, Helpers.get_config(opts))
+  end
+
+  @doc """
+  Gets the thumbnail image of an app.
+
+  ## Examples
+
+      iex> QlikElixir.REST.Apps.get_thumbnail("app-123")
+      {:ok, <<binary>>}
+
+  """
+  @spec get_thumbnail(String.t(), keyword()) :: {:ok, binary()} | {:error, Error.t()}
+  def get_thumbnail(app_id, opts \\ []) do
+    Client.get("#{@base_path}/#{app_id}/media/thumbnail", Helpers.get_config(opts))
   end
 
   # Private helpers

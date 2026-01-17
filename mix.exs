@@ -1,7 +1,7 @@
 defmodule QlikElixir.MixProject do
   use Mix.Project
 
-  @version "0.2.2"
+  @version "0.3.0"
   @github_url "https://github.com/dgilperez/qlik_elixir"
 
   def project do
@@ -42,17 +42,18 @@ defmodule QlikElixir.MixProject do
   end
 
   defp description do
-    "An Elixir client library for uploading CSV files to Qlik Cloud with comprehensive API support"
+    "Comprehensive Elixir client for Qlik Cloud REST APIs and QIX Engine"
   end
 
   defp package do
     [
       licenses: ["MIT"],
       links: %{
-        "GitHub" => @github_url
+        "GitHub" => @github_url,
+        "Qlik Developer Portal" => "https://qlik.dev/"
       },
       maintainers: ["dgilperez"],
-      files: ~w(lib .formatter.exs mix.exs README.md LICENSE CHANGELOG.md)
+      files: ~w(lib .formatter.exs mix.exs README.md LICENSE CHANGELOG.md guides)
     ]
   end
 
@@ -60,15 +61,53 @@ defmodule QlikElixir.MixProject do
     [
       source_ref: "v#{@version}",
       source_url: @github_url,
-      main: "QlikElixir",
-      extras: ["README.md", "CHANGELOG.md"],
+      main: "readme",
+      logo: nil,
+      extras: [
+        "README.md",
+        "CHANGELOG.md",
+        "LICENSE",
+        "guides/getting-started.md",
+        "guides/rest-apis.md",
+        "guides/qix-engine.md"
+      ],
+      groups_for_extras: [
+        Guides: ~r/guides\/.*/
+      ],
       groups_for_modules: [
-        "Core API": [QlikElixir],
-        "Internal Modules": [
-          QlikElixir.Client,
+        "REST APIs": [
+          QlikElixir.REST.Apps,
+          QlikElixir.REST.Spaces,
+          QlikElixir.REST.DataFiles,
+          QlikElixir.REST.Reloads,
+          QlikElixir.REST.Users,
+          QlikElixir.REST.Groups,
+          QlikElixir.REST.APIKeys,
+          QlikElixir.REST.Automations,
+          QlikElixir.REST.Webhooks,
+          QlikElixir.REST.DataConnections,
+          QlikElixir.REST.Items,
+          QlikElixir.REST.Collections,
+          QlikElixir.REST.Reports,
+          QlikElixir.REST.Tenants,
+          QlikElixir.REST.Roles,
+          QlikElixir.REST.Audits,
+          QlikElixir.REST.NaturalLanguage
+        ],
+        "QIX Engine": [
+          QlikElixir.QIX.Session,
+          QlikElixir.QIX.App,
+          QlikElixir.QIX.Protocol
+        ],
+        Core: [
+          QlikElixir,
           QlikElixir.Config,
-          QlikElixir.Uploader,
-          QlikElixir.Error
+          QlikElixir.Error,
+          QlikElixir.Pagination
+        ],
+        Internal: [
+          QlikElixir.Client,
+          QlikElixir.REST.Helpers
         ]
       ]
     ]
