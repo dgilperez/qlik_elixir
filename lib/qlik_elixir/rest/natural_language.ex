@@ -30,7 +30,51 @@ defmodule QlikElixir.REST.NaturalLanguage do
   alias QlikElixir.REST.Helpers
 
   @doc """
+  Gets analysis recommendations based on natural language or field selections.
+
+  ## Parameters
+
+    * `app_id` - The app ID to query.
+    * `request` - Map with recommendation request:
+      * `:text` - Natural language question (optional if fields provided).
+      * `:fields` - List of field/master item selections (optional if text provided).
+      * `:target_analysis` - Preferred analysis type (optional).
+
+  ## Options
+
+    * `:config` - Required. The configuration struct.
+    * `:lang` - Language code (e.g., "en", "es") via Accept-Language header.
+
+  ## Returns
+
+  A response containing recommended analyses based on the app's data model.
+
+  ## Supported Analysis Types
+
+  "breakdown", "changePoint", "comparison", "contribution", "correlation",
+  "fact", "mutualInfo", "rank", "spike", "trend", "values"
+
+  ## Examples
+
+      # Natural language question
+      {:ok, response} = NaturalLanguage.recommend("app-123", %{text: "show sales by region"}, config: config)
+
+      # Field-based recommendation
+      {:ok, response} = NaturalLanguage.recommend("app-123", %{
+        fields: [%{name: "Sales", type: "measure"}, %{name: "Region", type: "dimension"}]
+      }, config: config)
+
+  """
+  @spec recommend(String.t(), map(), keyword()) :: {:ok, map()} | {:error, Error.t()}
+  def recommend(app_id, request, opts \\ []) do
+    path = "api/v1/apps/#{app_id}/insight-analyses/actions/recommend"
+    Client.post(path, request, Helpers.get_config(opts))
+  end
+
+  @doc """
   Asks a natural language question about an app's data.
+
+  This is a convenience wrapper around `recommend/3` for simple text queries.
 
   ## Parameters
 
@@ -40,61 +84,32 @@ defmodule QlikElixir.REST.NaturalLanguage do
   ## Options
 
     * `:config` - Required. The configuration struct.
-    * `:conversation_id` - Continue an existing conversation.
     * `:lang` - Language code for the question (e.g., "en", "es").
 
-  ## Returns
+  ## Examples
 
-  A response containing:
-    * `conversationId` - ID for continuing the conversation.
-    * `responses` - List of response objects (narrative, chart, etc.).
-    * `followUps` - Suggested follow-up questions.
+      {:ok, response} = NaturalLanguage.ask("app-123", "What were total sales?", config: config)
 
   """
   @spec ask(String.t(), String.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
   def ask(app_id, question, opts \\ []) do
-    path = "api/v1/apps/#{app_id}/insight-analyses/actions/ask"
-
-    body =
-      %{"text" => question}
-      |> Helpers.put_if_present("conversationId", Keyword.get(opts, :conversation_id))
-      |> Helpers.put_if_present("lang", Keyword.get(opts, :lang))
-
-    Client.post(path, body, Helpers.get_config(opts))
+    recommend(app_id, %{"text" => question}, opts)
   end
 
   @doc """
-  Gets analysis recommendations for an app.
+  Lists available analysis types for an app.
 
-  Returns suggested analyses based on the app's data model.
+  Returns information about analysis types (breakdown, trend, comparison, etc.)
+  that can be used with the app's data model.
 
   ## Options
 
     * `:config` - Required. The configuration struct.
-    * `:fields` - Filter recommendations by specific fields.
-    * `:target` - Target type for recommendations (e.g., "analysis").
 
   """
-  @spec get_recommendations(String.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
-  def get_recommendations(app_id, opts \\ []) do
-    query =
-      Helpers.build_query(opts, [
-        {:fields, :fields},
-        {:target, :target}
-      ])
-
-    path = Helpers.build_path("api/v1/apps/#{app_id}/insight-analyses/recommendations", query)
-    Client.get(path, Helpers.get_config(opts))
-  end
-
-  @doc """
-  Gets available fields for natural language analysis.
-
-  Returns fields from the app's data model that can be used in NL queries.
-  """
-  @spec get_fields(String.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
-  def get_fields(app_id, opts \\ []) do
-    path = "api/v1/apps/#{app_id}/insight-analyses/fields"
+  @spec list_analysis_types(String.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
+  def list_analysis_types(app_id, opts \\ []) do
+    path = "api/v1/apps/#{app_id}/insight-analyses"
     Client.get(path, Helpers.get_config(opts))
   end
 

@@ -153,7 +153,7 @@ alias QlikElixir.QIX.{Session, App}
 
 ## API Testing Status
 
-All 127 public functions across 17 REST API modules have **unit tests** (100% coverage with Bypass HTTP mocking).
+All 362 tests pass (100% coverage with Bypass HTTP mocking).
 
 The following table shows **integration testing** status against real Qlik Cloud APIs:
 
@@ -165,17 +165,17 @@ The following table shows **integration testing** status against real Qlik Cloud
 | Reloads | ✅ | ✅ | create, cancel |
 | Collections | ✅ | ✅ | add_item, remove_item |
 | Items | ✅ | - | find_by_resource helper |
-| Users | ✅ | - | me, list |
-| Groups | ✅ | - | list |
+| Users | ✅ | - | me, list, count |
+| Groups | ✅ | - | list, list_settings |
+| Roles | ✅ | - | list, get |
 | APIKeys | ✅ | - | get_config requires tenant_id |
-| Roles | - | - | Unit tests only |
-| Automations | - | - | Unit tests only |
-| Webhooks | - | - | Unit tests only (needs callback URL) |
-| DataConnections | - | - | Unit tests only (needs datasourceID) |
-| Reports | - | - | Unit tests only |
-| NaturalLanguage | - | - | Unit tests only |
-| Audits | - | - | Unit tests only |
-| Tenants | - | - | Unit tests only |
+| Automations | ✅ | - | list, list_runs (get needs ownership) |
+| Webhooks | ✅ | - | list, list_event_types |
+| DataConnections | ✅ | - | list, get |
+| NaturalLanguage | ✅ | - | get_model, list_analysis_types, ask, recommend |
+| Audits | ✅ | - | list, get, list_sources, list_types |
+| Tenants | ✅ | - | me |
+| Reports | ⚠️ | - | API returns 404 (may require entitlement) |
 
 **QIX Engine (WebSocket):** ✅ Fully integration tested - Session, App, data extraction
 

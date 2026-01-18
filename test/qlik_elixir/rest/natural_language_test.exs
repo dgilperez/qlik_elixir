@@ -10,174 +10,162 @@ defmodule QlikElixir.REST.NaturalLanguageTest do
     {:ok, bypass: bypass, config: config}
   end
 
+  describe "recommend/3" do
+    test "returns recommendations for text query", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "POST", "/api/v1/apps/app-123/insight-analyses/actions/recommend", fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        params = Jason.decode!(body)
+        assert params["text"] == "show sales by region"
+
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(
+          200,
+          Jason.encode!(%{
+            "data" => [
+              %{
+                "type" => "breakdown",
+                "analysis" => %{
+                  "title" => "Sales by Region",
+                  "fields" => ["Sales", "Region"]
+                }
+              }
+            ]
+          })
+        )
+      end)
+
+      assert {:ok, response} = NaturalLanguage.recommend("app-123", %{"text" => "show sales by region"}, config: config)
+      assert length(response["data"]) == 1
+    end
+
+    test "supports field-based recommendations", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "POST", "/api/v1/apps/app-123/insight-analyses/actions/recommend", fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        params = Jason.decode!(body)
+        assert length(params["fields"]) == 2
+
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, Jason.encode!(%{"data" => []}))
+      end)
+
+      request = %{
+        "fields" => [
+          %{"name" => "Sales", "type" => "measure"},
+          %{"name" => "Region", "type" => "dimension"}
+        ]
+      }
+
+      assert {:ok, _} = NaturalLanguage.recommend("app-123", request, config: config)
+    end
+
+    test "supports target_analysis parameter", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "POST", "/api/v1/apps/app-123/insight-analyses/actions/recommend", fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        params = Jason.decode!(body)
+        assert params["targetAnalysis"] == "trend"
+
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, Jason.encode!(%{"data" => []}))
+      end)
+
+      request = %{"text" => "show trend", "targetAnalysis" => "trend"}
+      assert {:ok, _} = NaturalLanguage.recommend("app-123", request, config: config)
+    end
+  end
+
   describe "ask/3" do
-    test "returns answer to a natural language question", %{bypass: bypass, config: config} do
-      Bypass.expect_once(bypass, "POST", "/api/v1/apps/app-123/insight-analyses/actions/ask", fn conn ->
+    test "delegates to recommend with text query", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "POST", "/api/v1/apps/app-123/insight-analyses/actions/recommend", fn conn ->
         {:ok, body, conn} = Plug.Conn.read_body(conn)
         params = Jason.decode!(body)
-        assert params["text"] == "What were the total sales last month?"
+        assert params["text"] == "What were the total sales?"
 
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
         |> Plug.Conn.resp(
           200,
           Jason.encode!(%{
-            "conversationId" => "conv-123",
-            "responses" => [
+            "data" => [
               %{
-                "type" => "narrative",
-                "text" => "Total sales last month were $1.5M",
-                "confidence" => 0.95
-              },
-              %{
-                "type" => "chart",
-                "chartType" => "bar",
-                "data" => %{"qHyperCube" => %{}}
-              }
-            ],
-            "followUps" => [
-              "Show sales by region",
-              "Compare to previous month"
-            ]
-          })
-        )
-      end)
-
-      assert {:ok, response} = NaturalLanguage.ask("app-123", "What were the total sales last month?", config: config)
-      assert response["conversationId"] == "conv-123"
-      assert length(response["responses"]) == 2
-      assert length(response["followUps"]) == 2
-    end
-
-    test "supports conversation context", %{bypass: bypass, config: config} do
-      Bypass.expect_once(bypass, "POST", "/api/v1/apps/app-123/insight-analyses/actions/ask", fn conn ->
-        {:ok, body, conn} = Plug.Conn.read_body(conn)
-        params = Jason.decode!(body)
-        assert params["conversationId"] == "conv-existing"
-
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(200, Jason.encode!(%{"conversationId" => "conv-existing", "responses" => []}))
-      end)
-
-      assert {:ok, _} =
-               NaturalLanguage.ask("app-123", "Show by region", config: config, conversation_id: "conv-existing")
-    end
-
-    test "supports language option", %{bypass: bypass, config: config} do
-      Bypass.expect_once(bypass, "POST", "/api/v1/apps/app-123/insight-analyses/actions/ask", fn conn ->
-        {:ok, body, conn} = Plug.Conn.read_body(conn)
-        params = Jason.decode!(body)
-        assert params["lang"] == "es"
-
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(200, Jason.encode!(%{"conversationId" => "conv-123", "responses" => []}))
-      end)
-
-      assert {:ok, _} = NaturalLanguage.ask("app-123", "¿Cuáles fueron las ventas?", config: config, lang: "es")
-    end
-  end
-
-  describe "get_recommendations/2" do
-    test "returns analysis recommendations for an app", %{bypass: bypass, config: config} do
-      Bypass.expect_once(bypass, "GET", "/api/v1/apps/app-123/insight-analyses/recommendations", fn conn ->
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(
-          200,
-          Jason.encode!(%{
-            "recommendations" => [
-              %{
-                "id" => "rec-1",
-                "text" => "Total Sales by Region",
-                "description" => "View sales performance across regions",
-                "fields" => ["Sales", "Region"]
-              },
-              %{
-                "id" => "rec-2",
-                "text" => "Monthly Trends",
-                "description" => "Analyze sales trends over time",
-                "fields" => ["Sales", "Date"]
+                "type" => "fact",
+                "analysis" => %{
+                  "title" => "Total Sales",
+                  "narrative" => "Total sales were $1.5M"
+                }
               }
             ]
           })
         )
       end)
 
-      assert {:ok, response} = NaturalLanguage.get_recommendations("app-123", config: config)
-      assert length(response["recommendations"]) == 2
-    end
-
-    test "supports fields filter", %{bypass: bypass, config: config} do
-      Bypass.expect_once(bypass, "GET", "/api/v1/apps/app-123/insight-analyses/recommendations", fn conn ->
-        assert conn.query_string =~ "fields=Sales"
-
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(200, Jason.encode!(%{"recommendations" => []}))
-      end)
-
-      assert {:ok, _} = NaturalLanguage.get_recommendations("app-123", config: config, fields: "Sales")
-    end
-
-    test "supports target filter", %{bypass: bypass, config: config} do
-      Bypass.expect_once(bypass, "GET", "/api/v1/apps/app-123/insight-analyses/recommendations", fn conn ->
-        assert conn.query_string =~ "target=analysis"
-
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(200, Jason.encode!(%{"recommendations" => []}))
-      end)
-
-      assert {:ok, _} = NaturalLanguage.get_recommendations("app-123", config: config, target: "analysis")
+      assert {:ok, response} = NaturalLanguage.ask("app-123", "What were the total sales?", config: config)
+      assert length(response["data"]) == 1
     end
   end
 
-  describe "get_fields/2" do
-    test "returns available fields for NL analysis", %{bypass: bypass, config: config} do
-      Bypass.expect_once(bypass, "GET", "/api/v1/apps/app-123/insight-analyses/fields", fn conn ->
+  describe "list_analysis_types/2" do
+    test "returns available analysis types for an app", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "GET", "/api/v1/apps/app-123/insight-analyses", fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
         |> Plug.Conn.resp(
           200,
           Jason.encode!(%{
-            "fields" => [
-              %{"name" => "Sales", "type" => "measure", "tags" => ["$numeric"]},
-              %{"name" => "Region", "type" => "dimension", "tags" => ["$ascii"]},
-              %{"name" => "Date", "type" => "dimension", "tags" => ["$date"]}
+            "data" => [
+              %{
+                "type" => "breakdown",
+                "shortDescription" => "Break down a measure by a dimension",
+                "longDescription" => "Shows how a measure is distributed across dimension values"
+              },
+              %{
+                "type" => "trend",
+                "shortDescription" => "Show trend over time",
+                "longDescription" => "Analyzes how a measure changes over a time period"
+              },
+              %{
+                "type" => "comparison",
+                "shortDescription" => "Compare values",
+                "longDescription" => "Compare measure values across dimension members"
+              }
             ]
           })
         )
       end)
 
-      assert {:ok, response} = NaturalLanguage.get_fields("app-123", config: config)
-      assert length(response["fields"]) == 3
+      assert {:ok, response} = NaturalLanguage.list_analysis_types("app-123", config: config)
+      assert length(response["data"]) == 3
     end
   end
 
   describe "get_model/2" do
-    test "returns NL model info for an app", %{bypass: bypass, config: config} do
+    test "returns NL model info with fields and master items", %{bypass: bypass, config: config} do
       Bypass.expect_once(bypass, "GET", "/api/v1/apps/app-123/insight-analyses/model", fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
         |> Plug.Conn.resp(
           200,
           Jason.encode!(%{
-            "status" => "ready",
-            "lastUpdated" => "2024-01-15T00:00:00Z",
-            "languages" => ["en", "es", "de"],
-            "vocabulary" => %{
-              "terms" => 1500,
-              "synonyms" => 200
+            "data" => %{
+              "fields" => [
+                %{"name" => "Sales", "defaultAggregation" => "sum", "classifications" => ["measure"]},
+                %{"name" => "Region", "defaultAggregation" => "countDistinct", "classifications" => ["dimension"]},
+                %{"name" => "Date", "defaultAggregation" => "countDistinct", "classifications" => ["date"]}
+              ],
+              "masterItems" => [
+                %{"caption" => "Total Sales", "libId" => "abc123", "classifications" => ["measure"]}
+              ],
+              "isLogicalModelEnabled" => true
             }
           })
         )
       end)
 
-      assert {:ok, model} = NaturalLanguage.get_model("app-123", config: config)
-      assert model["status"] == "ready"
-      assert "en" in model["languages"]
+      assert {:ok, response} = NaturalLanguage.get_model("app-123", config: config)
+      assert length(response["data"]["fields"]) == 3
+      assert length(response["data"]["masterItems"]) == 1
     end
   end
 end

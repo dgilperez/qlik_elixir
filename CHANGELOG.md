@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `NaturalLanguage` - Corrected API endpoints to match Qlik's actual API:
+  - `ask/3` now uses `/actions/recommend` (was `/actions/ask`)
+  - Added `recommend/3` for field-based recommendations
+  - Added `list_analysis_types/2` for available analysis types
+  - Removed non-existent `get_fields/2` and `get_recommendations/2`
+
 ## [0.3.3] - 2025-01-18
 
 ### Fixed
