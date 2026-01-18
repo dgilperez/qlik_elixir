@@ -258,7 +258,11 @@ defmodule QlikElixir.REST.CollectionsTest do
 
       results = Collections.add_items("coll-123", ["item-1", "item-2"], config: config)
       assert length(results) == 2
-      assert Enum.all?(results, fn {:ok, _} -> true; _ -> false end)
+
+      assert Enum.all?(results, fn
+               {:ok, _} -> true
+               _ -> false
+             end)
     end
   end
 

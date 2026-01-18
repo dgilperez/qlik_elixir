@@ -2,12 +2,12 @@
 
 ## Project Overview
 
-Open source Elixir client library for Qlik Cloud REST APIs. Currently supports the Data Files API with plans to expand to full API coverage and eventually provide an MCP (Model Context Protocol) server.
+Comprehensive Elixir client for Qlik Cloud REST APIs and QIX Engine. Supports 16+ REST API modules and WebSocket-based QIX Engine for data extraction.
 
 - **Package**: [hex.pm/packages/qlik_elixir](https://hex.pm/packages/qlik_elixir)
 - **Repository**: [github.com/dgilperez/qlik_elixir](https://github.com/dgilperez/qlik_elixir)
 - **License**: MIT
-- **Status**: Active development (v0.2.x)
+- **Status**: Active development (v0.3.x)
 
 ## Tech Stack
 
@@ -266,6 +266,43 @@ open doc/index.html
 # Publishing (maintainers only)
 mix hex.publish
 ```
+
+## Release Process
+
+Follow these steps when releasing a new version:
+
+1. **Update version** in `mix.exs`
+   ```elixir
+   @version "X.Y.Z"
+   ```
+
+2. **Update CHANGELOG.md**
+   - Add new version section with date
+   - Document all changes (Added, Changed, Fixed, Removed)
+   - Update comparison links at bottom
+
+3. **Run quality checks**
+   ```bash
+   mix format
+   mix credo --strict
+   mix test
+   ```
+
+4. **Commit and push**
+   ```bash
+   git add -A
+   git commit -m "Bump version to X.Y.Z"
+   git push
+   ```
+
+5. **Publish to Hex.pm**
+   ```bash
+   mix hex.publish
+   ```
+
+6. **Create GitHub release** (optional)
+   - Tag: `vX.Y.Z`
+   - Copy changelog section as release notes
 
 ## Contributing Guidelines
 

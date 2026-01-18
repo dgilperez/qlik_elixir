@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3] - 2025-01-18
+
+### Fixed
+- `Collections.add_item` - Fixed to use `{"id": item_id}` format (API requires single item)
+- `Collections.add_items` - Now iterates calling `add_item` for each item
+
+### Added
+- `Items.find_by_resource/3` - Helper to lookup item by resource ID and type
+- `Items.list` - Added `:resource_id` filter option
+
+## [0.3.2] - 2025-01-18
+
+### Fixed
+- `Spaces.update` - Fixed to use JSON Patch format required by Qlik API
+- `Client` - Added JSON encoding for list request bodies
+
+## [0.3.1] - 2025-01-17
+
+### Fixed
+- `Apps.get_script` - Fixed endpoint path from `/script` to `/scripts`
+- `APIKeys.get_config` - Changed to require tenant_id parameter
+- `APIKeys.update_config` - Changed to require tenant_id parameter
+
 ## [0.3.0] - 2025-01-17
 
 ### Added
@@ -107,7 +130,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Full test coverage with Bypass for HTTP mocking
 - Comprehensive documentation and examples
 
-[Unreleased]: https://github.com/dgilperez/qlik_elixir/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/dgilperez/qlik_elixir/compare/v0.3.3...HEAD
+[0.3.3]: https://github.com/dgilperez/qlik_elixir/compare/v0.3.2...v0.3.3
+[0.3.2]: https://github.com/dgilperez/qlik_elixir/compare/v0.3.1...v0.3.2
+[0.3.1]: https://github.com/dgilperez/qlik_elixir/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/dgilperez/qlik_elixir/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/dgilperez/qlik_elixir/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/dgilperez/qlik_elixir/compare/v0.2.0...v0.2.1
