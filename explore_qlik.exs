@@ -473,16 +473,21 @@ case APIKeys.list(config: config, limit: 20) do
     Explorer.error(inspect(err))
 end
 
-# 6.2 API keys config
+# 6.2 API keys config (requires tenant_id)
 Explorer.subheader("6.2 API Keys Configuration")
-case APIKeys.get_config(config: config) do
-  {:ok, api_config} ->
-    Explorer.success("API Keys config:")
-    Enum.each(api_config, fn {k, v} ->
-      Explorer.info("#{k}: #{inspect(v)}")
-    end)
+case Tenants.me(config: config) do
+  {:ok, tenant} ->
+    case APIKeys.get_config(tenant["id"], config: config) do
+      {:ok, api_config} ->
+        Explorer.success("API Keys config:")
+        Enum.each(api_config, fn {k, v} ->
+          Explorer.info("#{k}: #{inspect(v)}")
+        end)
+      {:error, err} ->
+        Explorer.error(inspect(err))
+    end
   {:error, err} ->
-    Explorer.error(inspect(err))
+    Explorer.error("Could not get tenant ID: #{inspect(err)}")
 end
 
 # =============================================================================
@@ -1036,22 +1041,13 @@ end
 # =============================================================================
 Explorer.header("SECTION 17: NATURAL LANGUAGE API (Insight Advisor)")
 
-# 17.1 Get NL fields for target app
-Explorer.subheader("17.1 Available Fields for NL Queries")
-case NaturalLanguage.get_fields(target_app_id, config: config) do
-  {:ok, %{"fields" => fields}} ->
-    Explorer.success("Found #{length(fields)} fields available for NL queries")
-
-    # Group by type
-    by_type = Enum.group_by(fields, & &1["type"])
-    Enum.each(by_type, fn {type, list} ->
-      Explorer.info("#{type}: #{length(list)} fields")
-    end)
-
-    IO.puts("\n  Sample fields:")
-    Enum.take(fields, 10) |> Enum.each(fn f ->
-      tags = (f["tags"] || []) |> Enum.join(", ")
-      Explorer.info("#{f["name"]} (#{f["type"]}) - [#{tags}]")
+# 17.1 List available analysis types
+Explorer.subheader("17.1 Available Analysis Types")
+case NaturalLanguage.list_analysis_types(target_app_id, config: config) do
+  {:ok, %{"data" => types}} ->
+    Explorer.success("Found #{length(types)} analysis types")
+    Enum.each(types, fn t ->
+      Explorer.info("#{t["type"]}: #{t["shortDescription"]}")
     end)
   {:ok, response} ->
     Explorer.info("Response: #{inspect(response)}")
@@ -1075,14 +1071,13 @@ case NaturalLanguage.get_model(target_app_id, config: config) do
     Explorer.error(inspect(err))
 end
 
-# 17.3 Get recommendations
+# 17.3 Get recommendations via recommend/3
 Explorer.subheader("17.3 Analysis Recommendations")
-case NaturalLanguage.get_recommendations(target_app_id, config: config) do
-  {:ok, %{"recommendations" => recs}} ->
-    Explorer.success("Found #{length(recs)} analysis recommendations")
+case NaturalLanguage.recommend(target_app_id, %{"text" => "show sales"}, config: config) do
+  {:ok, %{"data" => recs}} ->
+    Explorer.success("Found #{length(recs)} recommendations for 'show sales'")
     Enum.take(recs, 5) |> Enum.each(fn r ->
-      fields = (r["fields"] || []) |> Enum.join(", ")
-      Explorer.info("#{r["text"]} - Fields: [#{fields}]")
+      Explorer.info("#{r["type"]}: #{inspect(r["analysis"])}")
     end)
   {:ok, response} ->
     Explorer.info("Response: #{inspect(response)}")
@@ -1090,7 +1085,19 @@ case NaturalLanguage.get_recommendations(target_app_id, config: config) do
     Explorer.error(inspect(err))
 end
 
-# Note: Not calling NaturalLanguage.ask() to avoid potentially heavy compute
+# 17.4 Ask a question via ask/3
+Explorer.subheader("17.4 Natural Language Query")
+case NaturalLanguage.ask(target_app_id, "What is the total?", config: config) do
+  {:ok, %{"data" => results}} ->
+    Explorer.success("Found #{length(results)} results")
+    Enum.take(results, 3) |> Enum.each(fn r ->
+      Explorer.info("#{r["type"]}: #{inspect(r["analysis"])}")
+    end)
+  {:ok, response} ->
+    Explorer.info("Response: #{inspect(response)}")
+  {:error, err} ->
+    Explorer.error(inspect(err))
+end
 
 # =============================================================================
 # SECTION 18: CROSS-API ANALYSIS
@@ -1225,9 +1232,9 @@ PHASE 4 APIs (Content & Advanced):
     - get_status (report generation status)
 
   NATURAL LANGUAGE API (Insight Advisor):
-    - get_fields (available fields for NL)
-    - get_model (NL model status)
-    - get_recommendations (analysis recommendations)
+    - list_analysis_types (available analysis types)
+    - get_model (NL model info with fields)
+    - recommend (analysis recommendations)
     - ask (natural language queries)
 
 QIX ENGINE:

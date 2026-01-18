@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.5] - 2025-01-18
+
+### Fixed
+- `explore_qlik.exs` - Updated to use correct NaturalLanguage API functions:
+  - Replaced `get_fields/2` with `list_analysis_types/2`
+  - Replaced `get_recommendations/2` with `recommend/3`
+  - Fixed `APIKeys.get_config` to pass required `tenant_id` parameter
+
 ## [0.3.4] - 2025-01-18
 
 ### Fixed
@@ -139,7 +147,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Full test coverage with Bypass for HTTP mocking
 - Comprehensive documentation and examples
 
-[Unreleased]: https://github.com/dgilperez/qlik_elixir/compare/v0.3.4...HEAD
+[Unreleased]: https://github.com/dgilperez/qlik_elixir/compare/v0.3.5...HEAD
+[0.3.5]: https://github.com/dgilperez/qlik_elixir/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/dgilperez/qlik_elixir/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/dgilperez/qlik_elixir/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/dgilperez/qlik_elixir/compare/v0.3.1...v0.3.2
