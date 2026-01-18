@@ -114,6 +114,19 @@ defmodule QlikElixir.REST.ItemsTest do
 
       assert {:ok, _} = Items.list(config: config, sort: "-updatedAt")
     end
+
+    test "supports resourceId filter", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "GET", "/api/v1/items", fn conn ->
+        assert conn.query_string =~ "resourceId=app-123"
+        assert conn.query_string =~ "resourceType=app"
+
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, Jason.encode!(%{"data" => [], "links" => %{}}))
+      end)
+
+      assert {:ok, _} = Items.list(config: config, resource_id: "app-123", resource_type: "app")
+    end
   end
 
   describe "get/2" do
@@ -149,6 +162,41 @@ defmodule QlikElixir.REST.ItemsTest do
       end)
 
       assert {:error, %Error{type: :not_found}} = Items.get("not-found", config: config)
+    end
+  end
+
+  describe "find_by_resource/3" do
+    test "finds item by resource ID and type", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "GET", "/api/v1/items", fn conn ->
+        assert conn.query_string =~ "resourceId=app-456"
+        assert conn.query_string =~ "resourceType=app"
+        assert conn.query_string =~ "limit=1"
+
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(
+          200,
+          Jason.encode!(%{
+            "data" => [
+              %{"id" => "item-123", "resourceId" => "app-456", "resourceType" => "app"}
+            ]
+          })
+        )
+      end)
+
+      assert {:ok, item} = Items.find_by_resource("app-456", "app", config: config)
+      assert item["id"] == "item-123"
+      assert item["resourceId"] == "app-456"
+    end
+
+    test "returns not_found when resource doesn't exist", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "GET", "/api/v1/items", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(200, Jason.encode!(%{"data" => []}))
+      end)
+
+      assert {:error, %Error{type: :not_found}} = Items.find_by_resource("missing", "app", config: config)
     end
   end
 

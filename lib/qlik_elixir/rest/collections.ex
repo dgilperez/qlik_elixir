@@ -122,19 +122,34 @@ defmodule QlikElixir.REST.Collections do
   end
 
   @doc """
-  Adds items to a collection.
+  Adds an item to a collection.
+
+  ## Parameters
+
+    * `collection_id` - The collection ID.
+    * `item_id` - The item ID to add.
+
+  """
+  @spec add_item(String.t(), String.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
+  def add_item(collection_id, item_id, opts \\ []) do
+    path = "#{@base_path}/#{collection_id}/items"
+    body = %{"id" => item_id}
+    Client.post(path, body, Helpers.get_config(opts))
+  end
+
+  @doc """
+  Adds multiple items to a collection.
 
   ## Parameters
 
     * `collection_id` - The collection ID.
     * `item_ids` - List of item IDs to add.
 
+  Returns list of results for each item.
   """
-  @spec add_items(String.t(), list(String.t()), keyword()) :: {:ok, map()} | {:error, Error.t()}
+  @spec add_items(String.t(), list(String.t()), keyword()) :: list({:ok, map()} | {:error, Error.t()})
   def add_items(collection_id, item_ids, opts \\ []) when is_list(item_ids) do
-    path = "#{@base_path}/#{collection_id}/items"
-    body = %{"items" => item_ids}
-    Client.post(path, body, Helpers.get_config(opts))
+    Enum.map(item_ids, &add_item(collection_id, &1, opts))
   end
 
   @doc """

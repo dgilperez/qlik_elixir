@@ -220,28 +220,45 @@ defmodule QlikElixir.REST.CollectionsTest do
     end
   end
 
-  describe "add_items/3" do
-    test "adds items to a collection", %{bypass: bypass, config: config} do
+  describe "add_item/3" do
+    test "adds a single item to a collection", %{bypass: bypass, config: config} do
       Bypass.expect_once(bypass, "POST", "/api/v1/collections/coll-123/items", fn conn ->
         {:ok, body, conn} = Plug.Conn.read_body(conn)
         params = Jason.decode!(body)
-        assert params["items"] == ["item-1", "item-2"]
+        assert params["id"] == "item-1"
 
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
         |> Plug.Conn.resp(
           200,
-          Jason.encode!(%{
-            "data" => [
-              %{"id" => "item-1", "collectionId" => "coll-123"},
-              %{"id" => "item-2", "collectionId" => "coll-123"}
-            ]
-          })
+          Jason.encode!(%{"id" => "item-1", "collectionId" => "coll-123"})
         )
       end)
 
-      assert {:ok, result} = Collections.add_items("coll-123", ["item-1", "item-2"], config: config)
-      assert length(result["data"]) == 2
+      assert {:ok, result} = Collections.add_item("coll-123", "item-1", config: config)
+      assert result["id"] == "item-1"
+    end
+  end
+
+  describe "add_items/3" do
+    test "adds multiple items to a collection", %{bypass: bypass, config: config} do
+      # Bypass expects each item to be added individually
+      Bypass.expect(bypass, "POST", "/api/v1/collections/coll-123/items", fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        params = Jason.decode!(body)
+        item_id = params["id"]
+
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.resp(
+          200,
+          Jason.encode!(%{"id" => item_id, "collectionId" => "coll-123"})
+        )
+      end)
+
+      results = Collections.add_items("coll-123", ["item-1", "item-2"], config: config)
+      assert length(results) == 2
+      assert Enum.all?(results, fn {:ok, _} -> true; _ -> false end)
     end
   end
 

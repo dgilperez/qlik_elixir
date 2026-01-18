@@ -36,6 +36,7 @@ defmodule QlikElixir.REST.Items do
     * `:limit` - Maximum number of results per page.
     * `:next` - Cursor for pagination.
     * `:resource_type` - Filter by resource type (e.g., "app", "space", "datafile").
+    * `:resource_id` - Filter by resource ID (requires resource_type).
     * `:space_id` - Filter by space ID.
     * `:name` - Filter by name (partial match).
     * `:owner_id` - Filter by owner ID.
@@ -48,6 +49,7 @@ defmodule QlikElixir.REST.Items do
     query =
       Helpers.build_query(opts, [
         {:resourceType, :resource_type},
+        {:resourceId, :resource_id},
         {:spaceId, :space_id},
         {:name, :name},
         {:ownerId, :owner_id},
@@ -67,6 +69,29 @@ defmodule QlikElixir.REST.Items do
     "#{@base_path}/#{item_id}"
     |> Client.get(Helpers.get_config(opts))
     |> Helpers.normalize_get_response("Item")
+  end
+
+  @doc """
+  Finds an item by its resource ID and type.
+
+  ## Parameters
+
+    * `resource_id` - The resource ID (e.g., app ID, datafile ID).
+    * `resource_type` - The resource type (e.g., "app", "datafile").
+
+  ## Examples
+
+      iex> Items.find_by_resource("app-123", "app", config: config)
+      {:ok, %{"id" => "item-456", "resourceId" => "app-123"}}
+
+  """
+  @spec find_by_resource(String.t(), String.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
+  def find_by_resource(resource_id, resource_type, opts \\ []) do
+    case list(Keyword.merge(opts, resource_id: resource_id, resource_type: resource_type, limit: 1)) do
+      {:ok, %{"data" => [item | _]}} -> {:ok, item}
+      {:ok, %{"data" => []}} -> {:error, QlikElixir.Error.not_found("Item not found for resource")}
+      error -> error
+    end
   end
 
   @doc """
