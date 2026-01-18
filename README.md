@@ -312,6 +312,16 @@ mix dialyzer
 mix docs
 ```
 
+## Roadmap / TODO
+
+PRs welcome! Here are some areas that could use contribution:
+
+- [ ] **Themes API** - Manage app themes
+- [ ] **Extensions API** - Visualization extensions management
+- [ ] **Brands API** - Tenant branding configuration
+- [ ] **Reports API** - Currently returns 404, needs investigation
+- [ ] **Integration tests** - More write operation coverage (see Untested Write Operations above)
+
 ## Contributing
 
 1. Fork the repository
