@@ -159,23 +159,41 @@ The following table shows **integration testing** status against real Qlik Cloud
 
 | Module | Read | Write | Notes |
 |--------|:----:|:-----:|-------|
-| Apps | ✅ | - | list, get, get_script |
-| Spaces | ✅ | ✅ | update uses JSON Patch format |
-| DataFiles | ✅ | ✅ | Full CRUD verified |
-| Reloads | ✅ | ✅ | create, cancel |
-| Collections | ✅ | ✅ | add_item, remove_item |
-| Items | ✅ | - | find_by_resource helper |
-| Users | ✅ | - | me, list, count |
-| Groups | ✅ | - | list, list_settings |
-| Roles | ✅ | - | list, get |
-| APIKeys | ✅ | - | get_config requires tenant_id |
-| Automations | ✅ | - | list, list_runs (get needs ownership) |
-| Webhooks | ✅ | - | list, list_event_types |
-| DataConnections | ✅ | - | list, get |
-| NaturalLanguage | ✅ | - | get_model, list_analysis_types, ask, recommend |
-| Audits | ✅ | - | list, get, list_sources, list_types |
-| Tenants | ✅ | - | me |
-| Reports | ⚠️ | - | API returns 404 (may require entitlement) |
+| **Apps** | ✅ | ✅ | create, get, update, copy, delete, get_metadata, get_lineage, get_script, validate_script, list_media, get_thumbnail, export |
+| **Spaces** | ✅ | ✅ | create, get, update, delete, list_types, list_assignments |
+| **DataFiles** | ✅ | ✅ | list, get, upload, delete, find_by_name |
+| **Reloads** | ✅ | ✅ | list, get, create, cancel |
+| **Collections** | ✅ | ✅ | create, get, update, delete, list_items, add_item, remove_item, get_favorites |
+| **Items** | ✅ | - | list, get, find_by_resource, get_published_items, get_collections |
+| **Users** | ✅ | - | me, list, count |
+| **Groups** | ✅ | - | list, list_settings |
+| **Roles** | ✅ | - | list, get |
+| **APIKeys** | ✅ | - | get_config requires tenant_id |
+| **Automations** | ✅ | - | list, list_runs |
+| **Webhooks** | ✅ | - | list, list_event_types |
+| **DataConnections** | ✅ | - | list, get |
+| **NaturalLanguage** | ✅ | - | get_model, list_analysis_types, ask, recommend |
+| **Audits** | ✅ | - | list, get, list_sources, list_types |
+| **Tenants** | ✅ | - | me |
+| **Reports** | ⚠️ | - | API returns 404 (may require entitlement) |
+
+### Untested Write Operations
+
+The following write operations have unit tests but have not been integration tested:
+
+| Module | Untested Operations | Reason |
+|--------|---------------------|--------|
+| Apps | publish, import_app | Requires published app setup |
+| Spaces | create_assignment, delete_assignment | Requires user IDs |
+| DataFiles | update, change_owner, change_space, batch_* | Requires specific setup |
+| Items | update, delete | Affects catalog items |
+| Users | create, update, delete, invite | Tenant admin operations |
+| Groups | create, update, delete, update_settings | Group management |
+| APIKeys | create, update, delete, update_config | Security sensitive |
+| Automations | create, update, delete, run, enable, disable, etc. | Complex setup |
+| Webhooks | create, update, delete, resend_delivery | Requires callback URL |
+| DataConnections | create, update, delete | Requires datasourceID |
+| Tenants | get, create, update, deactivate, reactivate | Tenant admin only |
 
 **QIX Engine (WebSocket):** ✅ Fully integration tested - Session, App, data extraction
 
