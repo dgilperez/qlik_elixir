@@ -32,7 +32,7 @@ Add `qlik_elixir` to your dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:qlik_elixir, "~> 0.3.0"}
+    {:qlik_elixir, "~> 0.3.3"}
   ]
 end
 ```
@@ -150,6 +150,34 @@ alias QlikElixir.QIX.{Session, App}
 | [`QlikElixir.Config`](https://hexdocs.pm/qlik_elixir/QlikElixir.Config.html) | Configuration management |
 | [`QlikElixir.Error`](https://hexdocs.pm/qlik_elixir/QlikElixir.Error.html) | Error types and handling |
 | [`QlikElixir.Pagination`](https://hexdocs.pm/qlik_elixir/QlikElixir.Pagination.html) | Cursor-based pagination helpers |
+
+## API Testing Status
+
+All 127 public functions across 17 REST API modules have **unit tests** (100% coverage with Bypass HTTP mocking).
+
+The following table shows **integration testing** status against real Qlik Cloud APIs:
+
+| Module | Read | Write | Notes |
+|--------|:----:|:-----:|-------|
+| Apps | ✅ | - | list, get, get_script |
+| Spaces | ✅ | ✅ | update uses JSON Patch format |
+| DataFiles | ✅ | ✅ | Full CRUD verified |
+| Reloads | ✅ | ✅ | create, cancel |
+| Collections | ✅ | ✅ | add_item, remove_item |
+| Items | ✅ | - | find_by_resource helper |
+| Users | ✅ | - | me, list |
+| Groups | ✅ | - | list |
+| APIKeys | ✅ | - | get_config requires tenant_id |
+| Roles | - | - | Unit tests only |
+| Automations | - | - | Unit tests only |
+| Webhooks | - | - | Unit tests only (needs callback URL) |
+| DataConnections | - | - | Unit tests only (needs datasourceID) |
+| Reports | - | - | Unit tests only |
+| NaturalLanguage | - | - | Unit tests only |
+| Audits | - | - | Unit tests only |
+| Tenants | - | - | Unit tests only |
+
+**QIX Engine (WebSocket):** ✅ Fully integration tested - Session, App, data extraction
 
 ## Common Patterns
 
