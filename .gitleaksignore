@@ -1,0 +1,4 @@
+# The API key fixture is a bare JWT header ({"alg":"ES384","typ":"JWT"}) with no
+# payload and no signature. It never was a credential; the fixture in the working
+# tree is now obviously fake, but the old commit still trips the entropy rule.
+c50328fcf33fd76e2f8f101723aec1af485e54ec:test/qlik_elixir/rest/api_keys_test.exs:generic-api-key:137

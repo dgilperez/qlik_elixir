@@ -134,7 +134,7 @@ defmodule QlikElixir.REST.APIKeysTest do
           Jason.encode!(%{
             id: "new-key",
             description: "New API key",
-            token: "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCJ9...",
+            token: "fake-token-for-tests",
             status: "active"
           })
         )
