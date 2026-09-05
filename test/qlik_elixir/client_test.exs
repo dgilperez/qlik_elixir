@@ -55,6 +55,28 @@ defmodule QlikElixir.ClientTest do
       assert {:error, %Error{type: :network_error}} =
                Client.get("api/v1/data-files", config)
     end
+
+    test "reports a 429 as a rate limit error, not an upload error", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "GET", "/api/v1/reports", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.put_resp_header("retry-after", "30")
+        |> Plug.Conn.resp(429, Jason.encode!(%{message: "Too many requests"}))
+      end)
+
+      assert {:error, %Error{type: :rate_limit_error} = error} = Client.get("api/v1/reports", config)
+      assert error.message == "Too many requests"
+      assert error.details == %{"retry_after" => "30"}
+    end
+
+    test "still reports a 429 without a Retry-After header", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "GET", "/api/v1/reports", fn conn ->
+        Plug.Conn.resp(conn, 429, "")
+      end)
+
+      assert {:error, %Error{type: :rate_limit_error, details: nil, message: "Rate limit exceeded"}} =
+               Client.get("api/v1/reports", config)
+    end
   end
 
   describe "post/4" do

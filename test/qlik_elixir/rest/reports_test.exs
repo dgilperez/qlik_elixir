@@ -1,8 +1,8 @@
 defmodule QlikElixir.REST.ReportsTest do
   use ExUnit.Case, async: true
 
-  alias QlikElixir.REST.Reports
   alias QlikElixir.{Config, Error}
+  alias QlikElixir.REST.Reports
 
   setup do
     bypass = Bypass.open()
@@ -10,199 +10,238 @@ defmodule QlikElixir.REST.ReportsTest do
     {:ok, bypass: bypass, config: config}
   end
 
-  describe "list/1" do
-    test "returns paginated reports", %{bypass: bypass, config: config} do
-      Bypass.expect_once(bypass, "GET", "/api/v1/reports", fn conn ->
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(
-          200,
-          Jason.encode!(%{
-            "data" => [
-              %{"id" => "report-1", "name" => "Sales Report", "status" => "completed"},
-              %{"id" => "report-2", "name" => "Q4 Summary", "status" => "processing"}
-            ],
-            "links" => %{}
-          })
-        )
-      end)
-
-      assert {:ok, %{"data" => reports}} = Reports.list(config: config)
-      assert length(reports) == 2
-    end
-
-    test "supports pagination", %{bypass: bypass, config: config} do
-      Bypass.expect_once(bypass, "GET", "/api/v1/reports", fn conn ->
-        assert conn.query_string =~ "limit=10"
-
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(200, Jason.encode!(%{"data" => [], "links" => %{}}))
-      end)
-
-      assert {:ok, _} = Reports.list(config: config, limit: 10)
-    end
-
-    test "supports appId filter", %{bypass: bypass, config: config} do
-      Bypass.expect_once(bypass, "GET", "/api/v1/reports", fn conn ->
-        assert conn.query_string =~ "appId=app-123"
-
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(200, Jason.encode!(%{"data" => [], "links" => %{}}))
-      end)
-
-      assert {:ok, _} = Reports.list(config: config, app_id: "app-123")
-    end
-
-    test "supports status filter", %{bypass: bypass, config: config} do
-      Bypass.expect_once(bypass, "GET", "/api/v1/reports", fn conn ->
-        assert conn.query_string =~ "status=completed"
-
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(200, Jason.encode!(%{"data" => [], "links" => %{}}))
-      end)
-
-      assert {:ok, _} = Reports.list(config: config, status: "completed")
-    end
+  # The payload Qlik actually accepts, captured from a live tenant.
+  defp request do
+    %{
+      type: "sense-sheet-1.0",
+      senseSheetTemplate: %{appId: "app-123", sheet: %{id: "sheet-456"}},
+      output: %{
+        type: "pdf",
+        outputId: "cover",
+        pdfOutput: %{size: "A4", orientation: "L", resizeType: "autofit"}
+      }
+    }
   end
 
-  describe "get/2" do
-    test "returns report by ID", %{bypass: bypass, config: config} do
-      Bypass.expect_once(bypass, "GET", "/api/v1/reports/report-123", fn conn ->
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(
-          200,
-          Jason.encode!(%{
-            "id" => "report-123",
-            "name" => "Sales Report",
-            "status" => "completed",
-            "appId" => "app-456",
-            "type" => "sense-excel-template",
-            "createdAt" => "2024-01-15T10:00:00Z",
-            "completedAt" => "2024-01-15T10:05:00Z"
-          })
-        )
-      end)
+  defp json(conn, status, body) do
+    conn
+    |> Plug.Conn.put_resp_content_type("application/json")
+    |> Plug.Conn.resp(status, Jason.encode!(body))
+  end
 
-      assert {:ok, report} = Reports.get("report-123", config: config)
-      assert report["id"] == "report-123"
-      assert report["status"] == "completed"
-    end
+  defp expect_status(bypass, id, statuses) do
+    {:ok, agent} = Agent.start_link(fn -> statuses end)
 
-    test "returns not_found for non-existent report", %{bypass: bypass, config: config} do
-      Bypass.expect_once(bypass, "GET", "/api/v1/reports/not-found", fn conn ->
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(404, Jason.encode!(%{"error" => "Not found"}))
-      end)
-
-      assert {:error, %Error{type: :not_found}} = Reports.get("not-found", config: config)
-    end
+    Bypass.expect(bypass, "GET", "/api/v1/reports/#{id}/status", fn conn ->
+      status = Agent.get_and_update(agent, fn [head | rest] -> {head, if(rest == [], do: [head], else: rest)} end)
+      json(conn, 200, %{"status" => status, "statusLocation" => "/reports/#{id}/status"})
+    end)
   end
 
   describe "create/2" do
-    test "creates a new report", %{bypass: bypass, config: config} do
+    test "queues a report request and returns 202 payload", %{bypass: bypass, config: config} do
       Bypass.expect_once(bypass, "POST", "/api/v1/reports", fn conn ->
         {:ok, body, conn} = Plug.Conn.read_body(conn)
         params = Jason.decode!(body)
-        assert params["appId"] == "app-123"
-        assert params["type"] == "sense-excel-template"
-        assert params["output"]["outputId"] == "template-456"
 
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(
-          201,
-          Jason.encode!(%{
-            "id" => "report-new",
-            "appId" => "app-123",
-            "status" => "queued"
-          })
-        )
+        assert params["type"] == "sense-sheet-1.0"
+        assert params["senseSheetTemplate"]["sheet"]["id"] == "sheet-456"
+        assert params["output"]["outputId"] == "cover"
+
+        json(conn, 202, %{
+          "message" => "Report request has been accepted and is being processed.",
+          "outputsUrl" => "https://tenant:443/api/v1/reports/req-1/outputs",
+          "requestId" => "req-1"
+        })
       end)
 
-      params = %{
-        appId: "app-123",
-        type: "sense-excel-template",
-        output: %{outputId: "template-456"}
-      }
-
-      assert {:ok, report} = Reports.create(params, config: config)
-      assert report["id"] == "report-new"
-      assert report["status"] == "queued"
-    end
-  end
-
-  describe "delete/2" do
-    test "deletes a report", %{bypass: bypass, config: config} do
-      Bypass.expect_once(bypass, "DELETE", "/api/v1/reports/report-123", fn conn ->
-        conn |> Plug.Conn.resp(204, "")
-      end)
-
-      assert :ok = Reports.delete("report-123", config: config)
+      assert {:ok, response} = Reports.create(request(), config: config)
+      assert response["requestId"] == "req-1"
     end
 
-    test "returns not_found for non-existent report", %{bypass: bypass, config: config} do
-      Bypass.expect_once(bypass, "DELETE", "/api/v1/reports/not-found", fn conn ->
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(404, Jason.encode!(%{"error" => "Not found"}))
+    test "surfaces a rejected request body", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "POST", "/api/v1/reports", fn conn ->
+        json(conn, 400, %{"message" => "output.outputId is required"})
       end)
 
-      assert {:error, %Error{type: :not_found}} = Reports.delete("not-found", config: config)
-    end
-  end
-
-  describe "download/2" do
-    test "returns download URL for report", %{bypass: bypass, config: config} do
-      Bypass.expect_once(bypass, "GET", "/api/v1/reports/report-123/download", fn conn ->
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(
-          200,
-          Jason.encode!(%{
-            "url" => "https://download.qlik.com/reports/report-123.xlsx",
-            "expiresAt" => "2024-01-15T12:00:00Z"
-          })
-        )
-      end)
-
-      assert {:ok, download} = Reports.download("report-123", config: config)
-      assert download["url"] =~ "report-123.xlsx"
-    end
-
-    test "returns not_found for non-existent report", %{bypass: bypass, config: config} do
-      Bypass.expect_once(bypass, "GET", "/api/v1/reports/not-found/download", fn conn ->
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(404, Jason.encode!(%{"error" => "Not found"}))
-      end)
-
-      assert {:error, %Error{type: :not_found}} = Reports.download("not-found", config: config)
+      assert {:error, %Error{message: "output.outputId is required"}} = Reports.create(%{}, config: config)
     end
   end
 
   describe "get_status/2" do
-    test "returns report status", %{bypass: bypass, config: config} do
-      Bypass.expect_once(bypass, "GET", "/api/v1/reports/report-123/status", fn conn ->
-        conn
-        |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.resp(
-          200,
-          Jason.encode!(%{
-            "status" => "processing",
-            "progress" => 75,
-            "message" => "Generating charts..."
-          })
-        )
+    test "returns the processing status", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "GET", "/api/v1/reports/req-1/status", fn conn ->
+        json(conn, 200, %{"status" => "processing", "resolutionAttempts" => 1})
       end)
 
-      assert {:ok, status} = Reports.get_status("report-123", config: config)
-      assert status["status"] == "processing"
-      assert status["progress"] == 75
+      assert {:ok, %{"status" => "processing"}} = Reports.get_status("req-1", config: config)
+    end
+
+    test "returns not_found for an unknown request", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "GET", "/api/v1/reports/nope/status", fn conn ->
+        json(conn, 404, %{"error" => "Not found"})
+      end)
+
+      assert {:error, %Error{type: :not_found}} = Reports.get_status("nope", config: config)
+    end
+  end
+
+  describe "list_outputs/2" do
+    test "returns the produced outputs", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "GET", "/api/v1/reports/req-1/outputs", fn conn ->
+        json(conn, 200, %{
+          "data" => [
+            %{
+              "outputId" => "cover",
+              "location" => "https://tenant:443/api/v1/temp-contents/abc123",
+              "sizeBytes" => 484_927,
+              "status" => "done"
+            }
+          ],
+          "links" => %{}
+        })
+      end)
+
+      assert {:ok, %{"data" => [output]}} = Reports.list_outputs("req-1", config: config)
+      assert output["sizeBytes"] == 484_927
+    end
+
+    test "sends filter, limit, page and sort", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "GET", "/api/v1/reports/req-1/outputs", fn conn ->
+        query = URI.decode_query(conn.query_string)
+
+        assert query["filter"] == ~s(outputId eq "cover")
+        assert query["limit"] == "10"
+        assert query["page"] == "1"
+        assert query["sort"] == "+outputId,-sizeBytes"
+
+        json(conn, 200, %{"data" => [], "links" => %{}})
+      end)
+
+      assert {:ok, _} =
+               Reports.list_outputs("req-1",
+                 config: config,
+                 filter: ~s(outputId eq "cover"),
+                 limit: 10,
+                 page: "1",
+                 sort: ["+outputId", "-sizeBytes"]
+               )
+    end
+  end
+
+  describe "await/2" do
+    test "polls until the request is done", %{bypass: bypass, config: config} do
+      expect_status(bypass, "req-1", ["queued", "processing", "done"])
+
+      assert {:ok, %{"status" => "done"}} = Reports.await("req-1", config: config, interval: 1)
+    end
+
+    test "returns report_failed when Qlik gives up", %{bypass: bypass, config: config} do
+      expect_status(bypass, "req-1", ["processing", "failed"])
+
+      assert {:error, %Error{type: :report_failed, message: "Report request failed"}} =
+               Reports.await("req-1", config: config, interval: 1)
+    end
+
+    test "treats aborted as a failure", %{bypass: bypass, config: config} do
+      expect_status(bypass, "req-1", ["aborted"])
+
+      assert {:error, %Error{type: :report_failed}} = Reports.await("req-1", config: config, interval: 1)
+    end
+
+    test "gives up once the timeout is spent", %{bypass: bypass, config: config} do
+      expect_status(bypass, "req-1", ["processing"])
+
+      # One poll always happens; with no room left for another sleep it gives up.
+      assert {:error, %Error{type: :timeout, message: message}} =
+               Reports.await("req-1", config: config, interval: 50, timeout: 0)
+
+      assert message =~ "not finished after 0ms"
+    end
+
+    test "rejects a nonsensical interval instead of crashing in Process.sleep", %{config: config} do
+      assert {:error, %Error{type: :validation_error, message: message}} =
+               Reports.await("req-1", config: config, interval: -1)
+
+      assert message =~ ":interval"
+    end
+
+    test "rejects a nonsensical timeout", %{config: config} do
+      assert {:error, %Error{type: :validation_error, message: message}} =
+               Reports.await("req-1", config: config, timeout: "soon")
+
+      assert message =~ ":timeout"
+    end
+
+    test "keeps polling while the status is aborting", %{bypass: bypass, config: config} do
+      expect_status(bypass, "req-1", ["aborting", "aborted"])
+
+      assert {:error, %Error{type: :report_failed, message: "Report request aborted"}} =
+               Reports.await("req-1", config: config, interval: 1)
+    end
+  end
+
+  describe "generate/2" do
+    test "queues, waits and returns the outputs", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "POST", "/api/v1/reports", fn conn ->
+        json(conn, 202, %{"requestId" => "req-1", "outputsUrl" => "https://tenant/x"})
+      end)
+
+      expect_status(bypass, "req-1", ["processing", "done"])
+
+      Bypass.expect_once(bypass, "GET", "/api/v1/reports/req-1/outputs", fn conn ->
+        json(conn, 200, %{"data" => [%{"outputId" => "cover", "location" => "https://tenant/y"}], "links" => %{}})
+      end)
+
+      assert {:ok, [%{"outputId" => "cover"}]} = Reports.generate(request(), config: config, interval: 1)
+    end
+
+    test "stops at the first failure", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "POST", "/api/v1/reports", fn conn ->
+        json(conn, 202, %{"requestId" => "req-1"})
+      end)
+
+      expect_status(bypass, "req-1", ["failed"])
+
+      assert {:error, %Error{type: :report_failed}} = Reports.generate(request(), config: config, interval: 1)
+    end
+  end
+
+  describe "download_output/2" do
+    test "downloads from an output map", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "GET", "/api/v1/temp-contents/abc123", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/pdf")
+        |> Plug.Conn.resp(200, "%PDF-1.7 binary")
+      end)
+
+      output = %{"outputId" => "cover", "location" => "https://tenant:443/api/v1/temp-contents/abc123"}
+
+      assert {:ok, "%PDF-1.7 binary"} = Reports.download_output(output, config: config)
+    end
+
+    test "keeps the query string of the location", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "GET", "/api/v1/temp-contents/abc123", fn conn ->
+        assert conn.query_string == "inline=1"
+        Plug.Conn.resp(conn, 200, "bytes")
+      end)
+
+      assert {:ok, "bytes"} =
+               Reports.download_output("https://tenant:443/api/v1/temp-contents/abc123?inline=1", config: config)
+    end
+
+    test "rejects an output that has no location yet", %{config: config} do
+      assert {:error, %Error{type: :validation_error}} =
+               Reports.download_output(%{"outputId" => "cover", "status" => "processing"}, config: config)
+    end
+
+    test "returns not_found once the temporary content has expired", %{bypass: bypass, config: config} do
+      Bypass.expect_once(bypass, "GET", "/api/v1/temp-contents/gone", fn conn ->
+        json(conn, 404, %{"error" => "Not found"})
+      end)
+
+      assert {:error, %Error{type: :not_found}} =
+               Reports.download_output("https://tenant/api/v1/temp-contents/gone", config: config)
     end
   end
 end

@@ -13,12 +13,9 @@ defmodule QlikElixir.REST.Helpers do
 
   ## Examples
 
-      iex> QlikElixir.REST.Helpers.get_config([])
-      %QlikElixir.Config{...}
-
       iex> config = QlikElixir.Config.new(api_key: "key", tenant_url: "https://example.com")
-      iex> QlikElixir.REST.Helpers.get_config(config: config)
-      %QlikElixir.Config{api_key: "key", ...}
+      iex> QlikElixir.REST.Helpers.get_config(config: config).api_key
+      "key"
 
   """
   @spec get_config(keyword()) :: Config.t()
@@ -57,25 +54,54 @@ defmodule QlikElixir.REST.Helpers do
   def put_if_present(map, key, value), do: Map.put(map, key, value)
 
   @doc """
-  Builds a query string from options using common pagination parameters.
+  Normalizes a repeatable query parameter into the comma-separated form Qlik
+  expects, leaving scalars and `nil` untouched.
 
-  Takes a list of `{api_key, opts_key}` tuples to map option keys to API query params,
-  plus standard pagination params (limit, next).
+  ## Examples
+
+      iex> QlikElixir.REST.Helpers.join_param(["+name", "-updatedAt"])
+      "+name,-updatedAt"
+
+      iex> QlikElixir.REST.Helpers.join_param("+name")
+      "+name"
+
+      iex> QlikElixir.REST.Helpers.join_param(nil)
+      nil
+
+  """
+  @spec join_param(nil | String.t() | list()) :: String.t() | nil
+  def join_param(nil), do: nil
+  def join_param(values) when is_list(values), do: Enum.join(values, ",")
+  def join_param(value), do: value
+
+  @doc """
+  Builds a query string from options using a list of `{api_key, opts_key}` tuples.
+
+  Cursor-paginated endpoints — most of them — get `limit` and `next` for free. Pass
+  `base_mappings` to override that for an endpoint that pages differently, as the
+  report templates one does with `skip`.
+
+  List values are comma-joined, so a repeatable parameter can be given as a list.
 
   ## Examples
 
       iex> QlikElixir.REST.Helpers.build_query([limit: 10, space_id: "abc"], [{:spaceId, :space_id}])
       "limit=10&spaceId=abc"
 
-  """
-  @spec build_query(keyword(), list({atom(), atom()})) :: String.t()
-  def build_query(opts, param_mappings) do
-    base_params = [{:limit, :limit}, {:next, :next}]
+      iex> QlikElixir.REST.Helpers.build_query([skip: 20], [{:skip, :skip}], [{:limit, :limit}])
+      "skip=20"
 
-    (base_params ++ param_mappings)
+      iex> QlikElixir.REST.Helpers.build_query([sort: ["+name", "-createdAt"]], [{:sort, :sort}])
+      "sort=%2Bname%2C-createdAt"
+
+  """
+  @spec build_query(keyword(), list({atom(), atom()}), list({atom(), atom()})) :: String.t()
+  def build_query(opts, param_mappings, base_mappings \\ [{:limit, :limit}, {:next, :next}]) do
+    (base_mappings ++ param_mappings)
     |> Enum.reduce([], fn {api_key, opts_key}, acc ->
-      add_param(acc, api_key, Keyword.get(opts, opts_key))
+      add_param(acc, api_key, join_param(Keyword.get(opts, opts_key)))
     end)
+    |> Enum.reverse()
     |> Pagination.build_query()
   end
 
@@ -142,8 +168,9 @@ defmodule QlikElixir.REST.Helpers do
       iex> QlikElixir.REST.Helpers.normalize_delete_response({:ok, %{}}, "User")
       :ok
 
-      iex> QlikElixir.REST.Helpers.normalize_delete_response({:error, %Error{type: :file_not_found}}, "User")
-      {:error, %Error{type: :not_found, message: "User not found"}}
+      iex> {:error, error} = QlikElixir.REST.Helpers.normalize_delete_response({:error, %QlikElixir.Error{type: :file_not_found}}, "User")
+      iex> {error.type, error.message}
+      {:not_found, "User not found"}
 
   """
   @spec normalize_delete_response({:ok, any()} | {:error, any()}, String.t()) :: :ok | {:error, any()}
@@ -163,8 +190,9 @@ defmodule QlikElixir.REST.Helpers do
       iex> QlikElixir.REST.Helpers.normalize_get_response({:ok, %{"id" => "123"}}, "User")
       {:ok, %{"id" => "123"}}
 
-      iex> QlikElixir.REST.Helpers.normalize_get_response({:error, %Error{type: :file_not_found}}, "User")
-      {:error, %Error{type: :not_found, message: "User not found"}}
+      iex> {:error, error} = QlikElixir.REST.Helpers.normalize_get_response({:error, %QlikElixir.Error{type: :file_not_found}}, "User")
+      iex> {error.type, error.message}
+      {:not_found, "User not found"}
 
   """
   @spec normalize_get_response({:ok, any()} | {:error, any()}, String.t()) :: {:ok, any()} | {:error, any()}
@@ -185,11 +213,13 @@ defmodule QlikElixir.REST.Helpers do
 
   ## Examples
 
-      iex> QlikElixir.REST.Helpers.validate_file("/path/to/file.csv")
-      {:ok, %File.Stat{}}
+      iex> {:ok, stat} = QlikElixir.REST.Helpers.validate_file("mix.exs")
+      iex> stat.type
+      :regular
 
-      iex> QlikElixir.REST.Helpers.validate_file("/nonexistent")
-      {:error, %Error{type: :file_not_found}}
+      iex> {:error, error} = QlikElixir.REST.Helpers.validate_file("/nonexistent")
+      iex> error.type
+      :file_not_found
 
   """
   @spec validate_file(String.t()) :: {:ok, File.Stat.t()} | {:error, Error.t()}

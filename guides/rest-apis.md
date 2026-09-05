@@ -364,28 +364,60 @@ alias QlikElixir.REST.Collections
 {:ok, %{"data" => favorites}} = Collections.get_favorites()
 ```
 
-## Reports API
+## Reporting API
 
 [`QlikElixir.REST.Reports`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.Reports.html) | [Qlik API Reference](https://qlik.dev/apis/rest/reports/)
 
-Generate and download reports.
+Reporting is asynchronous: you queue a request, poll its status, then collect the
+outputs. There is no listing of past reports — a request is a job, not a stored
+resource.
 
 ```elixir
 alias QlikElixir.REST.Reports
 
-# List reports
-{:ok, %{"data" => reports}} = Reports.list()
+request = %{
+  type: "sense-sheet-1.0",
+  senseSheetTemplate: %{appId: "app-123", sheet: %{id: "sheet-456"}},
+  output: %{
+    type: "pdf",
+    outputId: "monthly-sales",
+    pdfOutput: %{size: "A4", orientation: "L", resizeType: "autofit"}
+  },
+  meta: %{outputTtl: "PT1H"}
+}
 
-# Create report
-{:ok, report} = Reports.create(%{
+# Queue, wait and collect in one call
+{:ok, [output]} = Reports.generate(request)
+{:ok, binary} = Reports.download_output(output)
+File.write!("monthly-sales.pdf", binary)
+
+# Or drive the three steps yourself
+{:ok, %{"requestId" => id}} = Reports.create(request)
+{:ok, %{"status" => "done"}} = Reports.await(id, timeout: :timer.minutes(10))
+{:ok, %{"data" => outputs}} = Reports.list_outputs(id)
+```
+
+The output file lives in temporary content and expires with `meta.outputTtl`.
+
+## Report Templates API
+
+[`QlikElixir.REST.ReportTemplates`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.ReportTemplates.html) | [Qlik API Reference](https://qlik.dev/apis/rest/report-templates/)
+
+The stored Excel, Word or PowerPoint files that a report is rendered against.
+
+```elixir
+alias QlikElixir.REST.ReportTemplates
+
+{:ok, %{"data" => templates}} = ReportTemplates.list(name: "sales", sort: "-updatedAt")
+{:ok, template} = ReportTemplates.get("template-123")
+{:ok, xlsx} = ReportTemplates.download("template-123")
+
+# Templates are created from a file already uploaded as temporary content
+{:ok, created} = ReportTemplates.create(%{
   name: "Monthly Sales",
-  app_id: "app-123",
-  template_id: "template-456"
+  source_app_id: "app-123",
+  temporary_content_id: "653bb4acae966r0730da15fc"
 })
-
-# Download report
-{:ok, binary} = Reports.download("report-id")
-File.write!("report.pdf", binary)
 ```
 
 ## Natural Language API

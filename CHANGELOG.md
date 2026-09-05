@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-05
+
+### Fixed
+- `Client` - A `429 Too Many Requests` was reported as an `:upload_error`, leaving
+  `Error.rate_limit_error/2` unreachable. It now returns `:rate_limit_error` and
+  carries the `Retry-After` header in `details`. This matters for the Reporting
+  API, which Qlik caps at 10 requests per minute.
+- `Reports` - The module was built against endpoints that do not exist. Verified
+  against the live Reporting API and rewritten around its three real operations:
+  - `create/2` now returns the `202 Accepted` payload (`requestId`, `outputsUrl`)
+  - `get_status/2` unchanged, now documented with Qlik's real status values
+  - `list_outputs/2` replaces the invented `download/2`; pages with `:page`
+    (the API has no `next` cursor here) and accepts `:filter` and `:sort`
+  - Removed `list/1`, `get/2` and `delete/2` — the API has no listing, no
+    fetch-by-id and no delete for report requests. `list/1` returning 404 is what
+    the README described as a missing entitlement; it was this bug.
+
+### Added
+- `Reports.await/2` - Polls a request to a terminal status, with `:interval` and
+  `:timeout`, both validated rather than left to crash in `Process.sleep/1`
+- `Reports.generate/2` - Queue, wait and return the outputs in one call
+- `Reports.download_output/2` - Fetches the produced file from its temporary
+  content location
+- `ReportTemplates` - New module for the Report Templates API: `list/1`, `get/2`,
+  `create/2`, `update/3`, `patch/3`, `delete/2`, `download/2`
+- `Helpers.join_param/1` - Comma-joins repeatable query parameters
+- `Error` - `:timeout` and `:report_failed` types, with `timeout_error/2` and
+  `report_failed/2`
+
+### Changed
+- **Breaking**: `Reports.list/1`, `Reports.get/2`, `Reports.delete/2` and
+  `Reports.download/2` are gone. `download/2` becomes `download_output/2` and
+  takes an output (or its location), not a request id.
+- `Helpers.build_query/2` becomes `build_query/3`: the third argument overrides
+  the `limit`/`next` base for endpoints that page differently. Query parameters
+  now come out in the order they are declared rather than reversed, which changes
+  the query string of every listing endpoint (the parameters and their values are
+  unchanged). List values are comma-joined, so repeatable parameters such as
+  `sort` accept a list.
+- `Client.patch/4` accepted a list at runtime but declared `map()`; the spec now
+  admits the JSON Patch documents Qlik's patch endpoints require.
+- `Helpers` documentation examples were never executable — they showed placeholder
+  structs and a module-local alias. They are real doctests now and run in CI.
+- `guides/rest-apis.md` documented the removed `Reports.list/0` and
+  `Reports.download/1`; rewritten for the asynchronous flow and the new
+  Report Templates module.
+
 ## [0.3.5] - 2025-01-18
 
 ### Fixed

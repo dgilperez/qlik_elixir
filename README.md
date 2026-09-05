@@ -16,7 +16,7 @@ A comprehensive Elixir client for [Qlik Cloud](https://www.qlik.com/us/products/
 - **Users & Groups** - User management and access control
 - **Automations** - Create and run no-code workflows
 - **Webhooks** - Configure event notifications
-- **And more** - API Keys, Data Connections, Items, Collections, Reports, Natural Language
+- **And more** - API Keys, Data Connections, Items, Collections, Reports, Report Templates, Natural Language
 
 **QIX Engine** - Real-time data extraction via WebSocket:
 - Connect to apps and navigate sheets/objects
@@ -32,7 +32,7 @@ Add `qlik_elixir` to your dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:qlik_elixir, "~> 0.3.3"}
+    {:qlik_elixir, "~> 0.4.0"}
   ]
 end
 ```
@@ -111,6 +111,32 @@ alias QlikElixir.QIX.{Session, App}
 :ok = Session.disconnect(session)
 ```
 
+### Reporting - PDF and Excel from an app
+
+The Reporting API is asynchronous: you queue a request, poll it, then collect the
+outputs. `generate/2` does all three.
+
+```elixir
+alias QlikElixir.REST.Reports
+
+request = %{
+  type: "sense-sheet-1.0",
+  senseSheetTemplate: %{appId: "app-id", sheet: %{id: "sheet-id"}},
+  output: %{
+    type: "pdf",
+    outputId: "monthly",
+    pdfOutput: %{size: "A4", orientation: "L", resizeType: "autofit"}
+  },
+  meta: %{outputTtl: "PT1H"}
+}
+
+{:ok, [output]} = Reports.generate(request, config: config)
+{:ok, pdf} = Reports.download_output(output, config: config)
+File.write!("monthly.pdf", pdf)
+```
+
+Queue now and collect later with `create/2`, `get_status/2` and `list_outputs/2`.
+
 ## API Reference
 
 ### REST APIs
@@ -129,7 +155,8 @@ alias QlikElixir.QIX.{Session, App}
 | [`QlikElixir.REST.DataConnections`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.DataConnections.html) | External data sources | [Data Connections API](https://qlik.dev/apis/rest/data-connections/) |
 | [`QlikElixir.REST.Items`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.Items.html) | Unified resource listing | [Items API](https://qlik.dev/apis/rest/items/) |
 | [`QlikElixir.REST.Collections`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.Collections.html) | Content organization | [Collections API](https://qlik.dev/apis/rest/collections/) |
-| [`QlikElixir.REST.Reports`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.Reports.html) | Report generation | [Reports API](https://qlik.dev/apis/rest/reports/) |
+| [`QlikElixir.REST.Reports`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.Reports.html) | Asynchronous report generation | [Reporting API](https://qlik.dev/apis/rest/reports/) |
+| [`QlikElixir.REST.ReportTemplates`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.ReportTemplates.html) | Stored report templates | [Report Templates API](https://qlik.dev/apis/rest/report-templates/) |
 | [`QlikElixir.REST.Tenants`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.Tenants.html) | Tenant configuration | [Tenants API](https://qlik.dev/apis/rest/tenants/) |
 | [`QlikElixir.REST.Roles`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.Roles.html) | Role definitions | [Roles API](https://qlik.dev/apis/rest/roles/) |
 | [`QlikElixir.REST.Audits`](https://hexdocs.pm/qlik_elixir/QlikElixir.REST.Audits.html) | Audit logging | [Audits API](https://qlik.dev/apis/rest/audits/) |
@@ -153,7 +180,7 @@ alias QlikElixir.QIX.{Session, App}
 
 ## API Testing Status
 
-All 362 tests pass (100% coverage with Bypass HTTP mocking).
+All 397 tests and 22 doctests pass (Bypass HTTP mocking).
 
 The following table shows **integration testing** status against real Qlik Cloud APIs:
 
@@ -175,7 +202,8 @@ The following table shows **integration testing** status against real Qlik Cloud
 | **NaturalLanguage** | ✅ | - | get_model, list_analysis_types, ask, recommend |
 | **Audits** | ✅ | - | list, get, list_sources, list_types |
 | **Tenants** | ✅ | - | me |
-| **Reports** | ⚠️ | - | API returns 404 (may require entitlement) |
+| **Reports** | ✅ | ✅ | create, get_status, list_outputs, await, generate, download_output |
+| **ReportTemplates** | ✅ | - | list |
 
 ### Untested Write Operations
 
@@ -192,6 +220,7 @@ The following write operations have unit tests but have not been integration tes
 | APIKeys | create, update, delete, update_config | Security sensitive |
 | Automations | create, update, delete, run, enable, disable, etc. | Complex setup |
 | Webhooks | create, update, delete, resend_delivery | Requires callback URL |
+| ReportTemplates | get, create, update, patch, delete, download | Tenant has no stored templates to act on |
 | DataConnections | create, update, delete | Requires datasourceID |
 | Tenants | get, create, update, deactivate, reactivate | Tenant admin only |
 
@@ -319,7 +348,6 @@ PRs welcome! Here are some areas that could use contribution:
 - [ ] **Themes API** - Manage app themes
 - [ ] **Extensions API** - Visualization extensions management
 - [ ] **Brands API** - Tenant branding configuration
-- [ ] **Reports API** - Currently returns 404, needs investigation
 - [ ] **Integration tests** - More write operation coverage (see Untested Write Operations above)
 
 ## Contributing

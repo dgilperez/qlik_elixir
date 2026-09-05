@@ -25,6 +25,8 @@ defmodule QlikElixir.Error do
           | :network_error
           | :rate_limit_error
           | :not_found
+          | :timeout
+          | :report_failed
           | :unknown_error
 
   @doc """
@@ -127,6 +129,24 @@ defmodule QlikElixir.Error do
   @spec not_found(String.t(), keyword()) :: t()
   def not_found(message, opts \\ []) do
     new(:not_found, message, opts)
+  end
+
+  @doc """
+  Creates a timeout error, raised when an asynchronous operation does not
+  reach a terminal state within the allotted time.
+  """
+  @spec timeout_error(String.t(), keyword()) :: t()
+  def timeout_error(message, opts \\ []) do
+    new(:timeout, message, opts)
+  end
+
+  @doc """
+  Creates a report failure error, raised when Qlik reports a `failed` or
+  `aborted` report request.
+  """
+  @spec report_failed(String.t(), keyword()) :: t()
+  def report_failed(message, opts \\ []) do
+    new(:report_failed, message, opts)
   end
 
   @doc """

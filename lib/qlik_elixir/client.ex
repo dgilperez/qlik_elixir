@@ -56,8 +56,11 @@ defmodule QlikElixir.Client do
 
   @doc """
   Makes a PATCH request to the Qlik API.
+
+  Qlik's patch endpoints take a JSON Patch document (RFC 6902), which is a list of
+  operations; a plain map is accepted for the endpoints that expect one.
   """
-  @spec patch(String.t(), map(), Config.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
+  @spec patch(String.t(), map() | list(map()), Config.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
   def patch(path, body, config, opts \\ []) do
     url = build_url(config, path)
     headers = Config.headers(config)
@@ -96,6 +99,10 @@ defmodule QlikElixir.Client do
       {:ok, %{status: 404, body: body}} ->
         {:error, Error.file_not_found("Resource not found", details: body)}
 
+      {:ok, %{status: 429, body: body, headers: headers}} ->
+        message = extract_error_message(body, "Rate limit exceeded")
+        {:error, Error.rate_limit_error(message, details: retry_after(headers))}
+
       {:ok, %{status: status, body: body}} ->
         message = extract_error_message(body, "Request failed with status #{status}")
         {:error, Error.upload_error(message, response: %{status: status, body: body})}
@@ -129,6 +136,11 @@ defmodule QlikElixir.Client do
     path = String.trim_leading(path, "/")
     "#{base}/#{path}"
   end
+
+  # Qlik answers 429 with a Retry-After header; surface it so callers can back off
+  # instead of guessing.
+  defp retry_after(%{"retry-after" => [value | _]}), do: %{"retry_after" => value}
+  defp retry_after(_headers), do: nil
 
   defp extract_error_message(body, default) when is_map(body) do
     body["message"] || body["error"] || body["errors"] || default

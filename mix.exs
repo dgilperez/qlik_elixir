@@ -1,7 +1,7 @@
 defmodule QlikElixir.MixProject do
   use Mix.Project
 
-  @version "0.3.5"
+  @version "0.4.0"
   @github_url "https://github.com/dgilperez/qlik_elixir"
 
   def project do
@@ -89,6 +89,7 @@ defmodule QlikElixir.MixProject do
           QlikElixir.REST.Items,
           QlikElixir.REST.Collections,
           QlikElixir.REST.Reports,
+          QlikElixir.REST.ReportTemplates,
           QlikElixir.REST.Tenants,
           QlikElixir.REST.Roles,
           QlikElixir.REST.Audits,
