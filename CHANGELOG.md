@@ -54,7 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Reports.download/1`; rewritten for the asynchronous flow and the new
   Report Templates module.
 
-## [0.3.5] - 2025-01-18
+## [0.3.5] - 2026-01-18
 
 ### Fixed
 - `explore_qlik.exs` - Updated to use correct NaturalLanguage API functions:
@@ -62,7 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Replaced `get_recommendations/2` with `recommend/3`
   - Fixed `APIKeys.get_config` to pass required `tenant_id` parameter
 
-## [0.3.4] - 2025-01-18
+## [0.3.4] - 2026-01-18
 
 ### Fixed
 - `NaturalLanguage` - Corrected API endpoints to match Qlik's actual API:
@@ -71,7 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `list_analysis_types/2` for available analysis types
   - Removed non-existent `get_fields/2` and `get_recommendations/2`
 
-## [0.3.3] - 2025-01-18
+## [0.3.3] - 2026-01-18
 
 ### Fixed
 - `Collections.add_item` - Fixed to use `{"id": item_id}` format (API requires single item)
@@ -81,13 +81,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Items.find_by_resource/3` - Helper to lookup item by resource ID and type
 - `Items.list` - Added `:resource_id` filter option
 
-## [0.3.2] - 2025-01-18
+## [0.3.2] - 2026-01-17
 
 ### Fixed
 - `Spaces.update` - Fixed to use JSON Patch format required by Qlik API
 - `Client` - Added JSON encoding for list request bodies
 
-## [0.3.1] - 2025-01-17
+## [0.3.1] - 2026-01-17
 
 ### Fixed
 - `Apps.get_script` - Fixed endpoint path from `/script` to `/scripts`
@@ -149,7 +149,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated package description
 - Improved error handling across all modules
 
-## [0.2.2] - 2025-01-12
+## [0.2.2] - 2025-08-12
 
 ### Fixed
 - Fixed overwrite functionality to properly respect connection_id filter
@@ -158,7 +158,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for `includeAllSpaces` option in `list_files` function
   - Allows listing files across all spaces when set to true
 
-## [0.2.1] - 2025-01-11
+## [0.2.1] - 2025-07-11
 
 ### Fixed
 - Fixed multipart form structure to match Qlik Cloud API requirements
@@ -167,14 +167,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - This fixes upload failures with "Request must contain 'name' parameter" error
 - Updated tests to properly verify the multipart form structure
 
-## [0.2.0] - 2025-01-10
+## [0.2.0] - 2025-07-10
 
 ### Fixed
 - Fixed multipart form upload format to be compatible with Req library
   - File options are now properly wrapped in a list: `{content, [filename: filename, content_type: "text/csv"]}`
   - This ensures proper multipart form encoding when uploading CSV files to Qlik Cloud
 
-## [0.1.0] - 2024-01-01
+## [0.1.0] - 2025-07-10
 
 ### Added
 - Initial release of QlikElixir
