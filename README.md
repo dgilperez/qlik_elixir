@@ -32,7 +32,7 @@ Add `qlik_elixir` to your dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:qlik_elixir, "~> 0.4.0"}
+    {:qlik_elixir, "~> 0.4.1"}
   ]
 end
 ```
@@ -312,10 +312,11 @@ config = QlikElixir.new_config(
   # Optional
   connection_id: "default-connection-id",  # For data files
   http_options: [
-    timeout: :timer.minutes(5),    # Request timeout
-    retry: :transient,              # Retry strategy
-    max_retries: 3,                 # Max retry attempts
-    retry_delay: fn n -> n * 1000 end  # Backoff function
+    receive_timeout: :timer.minutes(5),  # Request timeout
+    retry: :transient,                   # Retry strategy
+    max_retries: 3                       # Max retry attempts
+    # Leave :retry_delay unset: a custom delay overrides the server's
+    # Retry-After header. By default Req honors it, then backs off exponentially.
   ]
 )
 ```

@@ -69,6 +69,33 @@ defmodule QlikElixir.ClientTest do
       assert error.details == %{"retry_after" => "30"}
     end
 
+    test "default retry honors the server's Retry-After on a 429", %{bypass: bypass} do
+      config =
+        Config.new(api_key: "test-key", tenant_url: "http://localhost:#{bypass.port}")
+        |> Config.merge(http_options: [max_retries: 1])
+
+      {:ok, calls} = Agent.start_link(fn -> 0 end)
+
+      Bypass.expect(bypass, "GET", "/api/v1/reports", fn conn ->
+        case Agent.get_and_update(calls, &{&1, &1 + 1}) do
+          0 ->
+            conn
+            |> Plug.Conn.put_resp_header("retry-after", "1")
+            |> Plug.Conn.resp(429, "")
+
+          _ ->
+            conn
+            |> Plug.Conn.put_resp_content_type("application/json")
+            |> Plug.Conn.resp(200, Jason.encode!(%{data: []}))
+        end
+      end)
+
+      {elapsed_us, result} = :timer.tc(fn -> Client.get("api/v1/reports", config) end)
+
+      assert {:ok, %{"data" => []}} = result
+      assert elapsed_us >= 1_000_000
+    end
+
     test "still reports a 429 without a Retry-After header", %{bypass: bypass, config: config} do
       Bypass.expect_once(bypass, "GET", "/api/v1/reports", fn conn ->
         Plug.Conn.resp(conn, 429, "")

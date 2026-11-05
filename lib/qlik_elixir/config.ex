@@ -39,12 +39,15 @@ defmodule QlikElixir.Config do
     }
   end
 
+  # No `:retry_delay`: since Req 0.7 a configured delay overrides the server's
+  # `Retry-After`, and Qlik rate limits (e.g. the Reporting API) rely on it.
+  # Req's default backoff honors `Retry-After` and falls back to exponential
+  # backoff with jitter.
   defp default_http_options do
     [
       receive_timeout: :timer.minutes(5),
       retry: :transient,
-      max_retries: 3,
-      retry_delay: fn attempt -> attempt * 1000 end
+      max_retries: 3
     ]
   end
 
