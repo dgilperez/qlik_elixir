@@ -1,8 +1,8 @@
 defmodule QlikElixir.REST.AuditsTest do
   use ExUnit.Case, async: true
 
-  alias QlikElixir.REST.Audits
   alias QlikElixir.{Config, Error}
+  alias QlikElixir.REST.Audits
 
   setup do
     bypass = Bypass.open()
