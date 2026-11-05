@@ -2,85 +2,73 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [master]
   pull_request:
-    branches: [ main ]
-
-env:
-  MIX_ENV: test
+    branches: [master]
 
 jobs:
   test:
-    name: Test on OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
+    name: Test on OTP ${{ matrix.otp }} / Elixir ${{ matrix.elixir }}
     runs-on: ubuntu-latest
+    env:
+      MIX_ENV: test
     strategy:
+      fail-fast: false
       matrix:
-        otp: ['25.x', '26.x']
-        elixir: ['1.14.x', '1.15.x', '1.16.x']
-    
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Elixir
-      uses: erlef/setup-beam@v1
-      with:
-        otp-version: ${{matrix.otp}}
-        elixir-version: ${{matrix.elixir}}
-    
-    - name: Restore dependencies cache
-      uses: actions/cache@v3
-      with:
-        path: deps
-        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
-        restore-keys: ${{ runner.os }}-mix-
-    
-    - name: Install dependencies
-      run: mix deps.get
-    
-    - name: Run tests
-      run: mix test
-    
-    - name: Check formatting
-      run: mix format --check-formatted
-    
-    - name: Run Credo
-      run: mix credo --strict
-    
-    - name: Run dialyzer
-      run: mix dialyzer
-    
-    - name: Generate coverage report
-      run: mix coveralls.github
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        include:
+          # mix.exs requires Elixir ~> 1.18.
+          - elixir: "1.18"
+            otp: "27"
+          - elixir: "1.19"
+            otp: "28"
+          - elixir: "1.20"
+            otp: "29"
 
-  publish:
-    name: Publish to Hex.pm
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Elixir
-      uses: erlef/setup-beam@v1
-      with:
-        otp-version: '26.x'
-        elixir-version: '1.16.x'
-    
-    - name: Restore dependencies cache
-      uses: actions/cache@v3
-      with:
-        path: deps
-        key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
-        restore-keys: ${{ runner.os }}-mix-
-    
-    - name: Install dependencies
-      run: mix deps.get
-    
-    - name: Publish to Hex.pm
-      run: mix hex.publish --yes
-      env:
-        HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
-      if: contains(github.event.head_commit.message, '[hex-publish]')
+      - uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ matrix.otp }}
+          elixir-version: ${{ matrix.elixir }}
+
+      - name: Restore dependencies cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-otp${{ matrix.otp }}-elixir${{ matrix.elixir }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-otp${{ matrix.otp }}-elixir${{ matrix.elixir }}-
+
+      - name: Install dependencies
+        run: mix deps.get
+
+      - name: Compile
+        run: mix compile --warnings-as-errors
+
+      - name: Check formatting
+        run: mix format --check-formatted
+
+      - name: Run Credo
+        run: mix credo --strict
+
+      - name: Run tests
+        run: mix test --cover
+
+      - name: Audit dependencies
+        run: mix hex.audit
+
+      - name: Restore Dialyzer PLT cache
+        uses: actions/cache@v4
+        with:
+          path: priv/plts
+          key: ${{ runner.os }}-plt-otp${{ matrix.otp }}-elixir${{ matrix.elixir }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: ${{ runner.os }}-plt-otp${{ matrix.otp }}-elixir${{ matrix.elixir }}-
+
+      # dialyxir is a :dev dependency.
+      - name: Run Dialyzer
+        env:
+          MIX_ENV: dev
+        run: mix dialyzer
