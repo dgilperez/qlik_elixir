@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `QIX.Session.request/5` and `QIX.Protocol.encode_request/4` - The specs now
+  accept the Global handle `-1` and named (map) params, which the library
+  itself sends; the old specs made Dialyzer flag every `QIX.App` call. New
+  types `QIX.Protocol.handle/0` and `QIX.Protocol.params/0`.
+- `QIX.Protocol` - The moduledoc named `0` as the Global handle; it is `-1`.
+- `Client.put/4` - The spec now accepts a `{:multipart, parts}` body, as
+  `REST.DataFiles.update/3` sends, and omits the JSON `Content-Type` header for
+  it, as `Client.post/4` already did.
+
 ## [0.4.1] - 2026-11-05
 
 ### Security

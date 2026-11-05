@@ -157,6 +157,12 @@ defmodule QlikElixir.REST.DataFilesTest do
   describe "update/3" do
     test "replaces file content", %{bypass: bypass, config: config} do
       Bypass.expect_once(bypass, "PUT", "/api/v1/data-files/file-123", fn conn ->
+        assert [content_type] = Plug.Conn.get_req_header(conn, "content-type")
+        assert content_type =~ ~r{^multipart/form-data; boundary=}
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        assert body =~ ~s(name="File")
+        assert body =~ "new,content\nrow,data"
+
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
         |> Plug.Conn.resp(
