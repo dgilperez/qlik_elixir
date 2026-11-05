@@ -1,7 +1,7 @@
 defmodule QlikElixir.MixProject do
   use Mix.Project
 
-  @version "0.4.0"
+  @version "0.4.1"
   @github_url "https://github.com/dgilperez/qlik_elixir"
 
   def project do
@@ -11,6 +11,7 @@ defmodule QlikElixir.MixProject do
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      hex: [ignore_advisories: Enum.map(advisory_exceptions(), & &1.id)],
       docs: docs(),
       package: package(),
       description: description(),
@@ -31,13 +32,35 @@ defmodule QlikElixir.MixProject do
 
   defp deps do
     [
-      {:req, "~> 0.5.0"},
+      {:req, "~> 0.7"},
       {:jason, "~> 1.4"},
       {:gun, "~> 2.1"},
       {:bypass, "~> 2.1", only: :test},
       {:ex_doc, "~> 0.31", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev], runtime: false}
+    ]
+  end
+
+  # `mix hex.audit` exceptions for advisories with no fixed release yet. Each one
+  # expires: test/advisory_exceptions_test.exs fails the suite once it lapses, so
+  # the package gets upgraded or the exception renewed with a fresh reason.
+  def advisory_exceptions do
+    [
+      %{
+        id: "EEF-CVE-2026-43966",
+        package: "cowlib",
+        until: ~D[2026-12-05],
+        reason:
+          "No fixed release yet. The flaw is in cow_http_struct_hd:escape_string/2, reached only when serializing structured headers (variants, variant-key, WebTransport protocols); gun never calls those serializers and this library builds no structured headers."
+      },
+      %{
+        id: "GHSA-w4f7-4cxr-rv3c",
+        package: "gun",
+        until: ~D[2026-12-05],
+        reason:
+          "No fixed release yet. Same root cause as EEF-CVE-2026-43966 (cowlib's cow_http_struct_hd); the QIX WebSocket client never sends structured headers built from user input."
+      }
     ]
   end
 

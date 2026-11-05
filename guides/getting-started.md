@@ -22,7 +22,7 @@ Add `qlik_elixir` to your `mix.exs`:
 ```elixir
 def deps do
   [
-    {:qlik_elixir, "~> 0.3.0"}
+    {:qlik_elixir, "~> 0.4.1"}
   ]
 end
 ```

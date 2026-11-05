@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-05
+
+### Security
+- Allow `req ~> 0.7` (was `~> 0.5.0`), so applications can move off Req 0.5
+  and its advisories EEF-CVE-2026-49755 (high) and EEF-CVE-2026-49756 (low),
+  fixed in Req 0.6.1. Req 0.6 also stops auto-decoding archive and compressed
+  response bodies: downloads now always come back as the raw binary.
+
+### Fixed
+- `Config` - The default `http_options` no longer set `:retry_delay`. Since
+  Req 0.7 a configured delay overrides the server's `Retry-After`, which would
+  have made retries ignore Qlik's rate-limit hint (the Reporting API allows 10
+  requests per minute). Req's default backoff honors `Retry-After` and falls
+  back to exponential backoff with jitter.
+- README - The `http_options` example used `timeout:`, which Req rejects; it is
+  `receive_timeout:`.
+
 ## [0.4.0] - 2026-09-05
 
 ### Fixed
@@ -194,7 +211,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Full test coverage with Bypass for HTTP mocking
 - Comprehensive documentation and examples
 
-[Unreleased]: https://github.com/dgilperez/qlik_elixir/compare/v0.3.5...HEAD
+[Unreleased]: https://github.com/dgilperez/qlik_elixir/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/dgilperez/qlik_elixir/compare/v0.4.0...v0.4.1
+[0.4.0]: https://github.com/dgilperez/qlik_elixir/compare/v0.3.5...v0.4.0
 [0.3.5]: https://github.com/dgilperez/qlik_elixir/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/dgilperez/qlik_elixir/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/dgilperez/qlik_elixir/compare/v0.3.2...v0.3.3
