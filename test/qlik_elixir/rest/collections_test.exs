@@ -1,8 +1,8 @@
 defmodule QlikElixir.REST.CollectionsTest do
   use ExUnit.Case, async: true
 
-  alias QlikElixir.REST.Collections
   alias QlikElixir.{Config, Error}
+  alias QlikElixir.REST.Collections
 
   setup do
     bypass = Bypass.open()

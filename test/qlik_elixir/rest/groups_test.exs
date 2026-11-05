@@ -1,8 +1,8 @@
 defmodule QlikElixir.REST.GroupsTest do
   use ExUnit.Case, async: true
 
-  alias QlikElixir.REST.Groups
   alias QlikElixir.{Config, Error}
+  alias QlikElixir.REST.Groups
 
   setup do
     bypass = Bypass.open()

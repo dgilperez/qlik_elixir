@@ -1,8 +1,8 @@
 defmodule QlikElixir.REST.TenantsTest do
   use ExUnit.Case, async: true
 
-  alias QlikElixir.REST.Tenants
   alias QlikElixir.{Config, Error}
+  alias QlikElixir.REST.Tenants
 
   setup do
     bypass = Bypass.open()

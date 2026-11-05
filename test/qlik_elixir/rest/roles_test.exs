@@ -1,8 +1,8 @@
 defmodule QlikElixir.REST.RolesTest do
   use ExUnit.Case, async: true
 
-  alias QlikElixir.REST.Roles
   alias QlikElixir.{Config, Error}
+  alias QlikElixir.REST.Roles
 
   setup do
     bypass = Bypass.open()
