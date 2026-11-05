@@ -37,7 +37,7 @@ defmodule QlikElixir.QIX.Protocol do
 
   ## Handles
 
-  - `0` = Global object (used for OpenDoc, GetActiveDoc, etc.)
+  - `-1` = Global object (used for OpenDoc, GetActiveDoc, etc.)
   - App handle = returned from OpenDoc (e.g., `1`)
   - Object handle = returned from GetObject (e.g., `2`, `3`, etc.)
   """
@@ -45,12 +45,18 @@ defmodule QlikElixir.QIX.Protocol do
   @default_page_height 1000
   @default_page_width 100
 
+  @typedoc "Object handle: `-1` for Global, otherwise a handle returned by the engine."
+  @type handle :: integer()
+
+  @typedoc "Method parameters, positional (list) or named (map)."
+  @type params :: list() | map()
+
   @doc """
   Encodes a JSON-RPC request.
 
   Returns `{:ok, json_string, request_id}`.
   """
-  @spec encode_request(String.t(), non_neg_integer(), list(), pos_integer()) ::
+  @spec encode_request(String.t(), handle(), params(), pos_integer()) ::
           {:ok, String.t(), pos_integer()}
   def encode_request(method, handle, params, request_id) do
     message = %{

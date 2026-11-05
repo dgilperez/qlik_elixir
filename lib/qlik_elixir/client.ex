@@ -5,6 +5,9 @@ defmodule QlikElixir.Client do
 
   alias QlikElixir.{Config, Error}
 
+  @typedoc "Request body: JSON-encoded map, or multipart form parts."
+  @type body :: map() | {:multipart, list()}
+
   @doc """
   Makes a GET request to the Qlik API.
   """
@@ -19,17 +22,9 @@ defmodule QlikElixir.Client do
   @doc """
   Makes a POST request to the Qlik API.
   """
-  @spec post(String.t(), map() | {:multipart, list()}, Config.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
-  def post(path, body, config, opts \\ [])
-
-  def post(path, {:multipart, _} = body, config, opts) do
-    # For multipart, don't set Content-Type header (Req will set it with boundary)
-    headers = [{"Authorization", "Bearer #{config.api_key}"}]
-    request(:post, build_url(config, path), headers, body, config, opts)
-  end
-
-  def post(path, body, config, opts) do
-    request(:post, build_url(config, path), Config.headers(config), body, config, opts)
+  @spec post(String.t(), body(), Config.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
+  def post(path, body, config, opts \\ []) do
+    request(:post, build_url(config, path), body_headers(body, config), body, config, opts)
   end
 
   @doc """
@@ -46,12 +41,9 @@ defmodule QlikElixir.Client do
   @doc """
   Makes a PUT request to the Qlik API.
   """
-  @spec put(String.t(), map(), Config.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
+  @spec put(String.t(), body(), Config.t(), keyword()) :: {:ok, map()} | {:error, Error.t()}
   def put(path, body, config, opts \\ []) do
-    url = build_url(config, path)
-    headers = Config.headers(config)
-
-    request(:put, url, headers, body, config, opts)
+    request(:put, build_url(config, path), body_headers(body, config), body, config, opts)
   end
 
   @doc """
@@ -78,6 +70,10 @@ defmodule QlikElixir.Client do
 
     request(:delete, url, headers, nil, config, opts)
   end
+
+  # For multipart, don't set Content-Type: Req sets it with the boundary.
+  defp body_headers({:multipart, _}, config), do: [{"Authorization", "Bearer #{config.api_key}"}]
+  defp body_headers(_body, config), do: Config.headers(config)
 
   defp request(method, url, headers, body, config, opts) do
     req_opts = build_req_options(method, url, headers, body, config, opts)

@@ -99,15 +99,15 @@ defmodule QlikElixir.QIX.Session do
 
     * `session` - Session PID
     * `method` - Method name (e.g., "Doc.GetAllSheets")
-    * `handle` - Object handle (0 for Global, app_handle for Doc methods)
-    * `params` - Method parameters as a list
+    * `handle` - Object handle (-1 for Global, app_handle for Doc methods)
+    * `params` - Method parameters, as a list (positional) or a map (named)
 
   ## Options
 
     * `:timeout` - Request timeout in ms (default: 30000)
 
   """
-  @spec request(pid(), String.t(), non_neg_integer(), list(), keyword()) ::
+  @spec request(pid(), String.t(), Protocol.handle(), Protocol.params(), keyword()) ::
           {:ok, any()} | {:error, Error.t()}
   def request(session, method, handle, params, opts \\ []) do
     timeout = Keyword.get(opts, :timeout, @default_timeout)
@@ -197,16 +197,11 @@ defmodule QlikElixir.QIX.Session do
   @impl true
   def handle_call({:request, method, handle, params}, from, state) do
     {:ok, json, request_id} = Protocol.encode_request(method, handle, params, state.request_id)
+    # gun queues the frame and always returns :ok; failures arrive as gun_down/gun_error.
+    :ok = :gun.ws_send(state.conn_pid, state.stream_ref, {:text, json})
 
-    case :gun.ws_send(state.conn_pid, state.stream_ref, {:text, json}) do
-      :ok ->
-        new_pending = Map.put(state.pending_requests, request_id, from)
-        new_state = %{state | request_id: request_id + 1, pending_requests: new_pending}
-        {:noreply, new_state}
-
-      {:error, reason} ->
-        {:reply, {:error, Error.network_error("Failed to send request: #{inspect(reason)}")}, state}
-    end
+    new_pending = Map.put(state.pending_requests, request_id, from)
+    {:noreply, %{state | request_id: request_id + 1, pending_requests: new_pending}}
   end
 
   @impl true
@@ -343,13 +338,8 @@ defmodule QlikElixir.QIX.Session do
     # Global handle is -1 in QIX API
     {:ok, json, request_id} = Protocol.encode_request("OpenDoc", -1, params, 1)
 
-    case :gun.ws_send(conn_pid, stream_ref, {:text, json}) do
-      :ok ->
-        wait_for_response(conn_pid, stream_ref, request_id, timeout)
-
-      {:error, reason} ->
-        {:error, reason}
-    end
+    :ok = :gun.ws_send(conn_pid, stream_ref, {:text, json})
+    wait_for_response(conn_pid, stream_ref, request_id, timeout)
   end
 
   defp wait_for_response(conn_pid, stream_ref, expected_id, timeout) do
