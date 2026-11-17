@@ -49,22 +49,7 @@ defmodule QlikElixir.MixProject do
   # expires: test/advisory_exceptions_test.exs fails the suite once it lapses, so
   # the package gets upgraded or the exception renewed with a fresh reason.
   def advisory_exceptions do
-    [
-      %{
-        id: "EEF-CVE-2026-43966",
-        package: "cowlib",
-        until: ~D[2026-12-05],
-        reason:
-          "No fixed release yet. The flaw is in cow_http_struct_hd:escape_string/2, reached only when serializing structured headers (variants, variant-key, WebTransport protocols); gun never calls those serializers and this library builds no structured headers."
-      },
-      %{
-        id: "GHSA-w4f7-4cxr-rv3c",
-        package: "gun",
-        until: ~D[2026-12-05],
-        reason:
-          "No fixed release yet. Same root cause as EEF-CVE-2026-43966 (cowlib's cow_http_struct_hd); the QIX WebSocket client never sends structured headers built from user input."
-      }
-    ]
+    []
   end
 
   defp description do
